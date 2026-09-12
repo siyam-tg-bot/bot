@@ -37,7 +37,7 @@ module.exports = (bot) => {
             for (const url of uniqueLinks) {
                 try {
                     let videoUrl = null;
-                    let title = "Auto Downloaded Video";
+                    let title = "Video File";
 
                     const downloadApis = [
                         `https://deliriussapi-official.vercel.app/download/alldown?url=${encodeURIComponent(url)}`,
@@ -97,9 +97,11 @@ module.exports = (bot) => {
                     const tempPath = path.join(cacheDir, `autolink_${Date.now()}.mp4`);
                     fs.writeFileSync(tempPath, videoBuffer);
 
+                    const captionText = `📥 𝐕𝐈𝐃𝐄𝐎 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐃\n━━━━━━━━━━━━━━━\n🎬 𝐓𝐈𝐓𝐋𝐄 : ${title || "Video File"}\n📦 𝐒𝐈𝐙𝐄 : ${fileSizeInMB.toFixed(2)} 𝐌𝐁\n━━━━━━━━━━━━━━━\n🦋 ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
+
                     await bot.sendVideo(chatId, fs.createReadStream(tempPath), {
                         reply_to_message_id: messageId,
-                        caption: `📥 ᴠɪᴅᴇᴏ ᴅᴏᴡɴʟᴏᴀᴅᴇᴅ\n━━━━━━━━━━━━━━━\n🎬 ᴛɪᴛʟᴇ: ${title}\n📦 sɪᴢᴇ: ${fileSizeInMB.toFixed(2)} MB\n👑 ᴀᴜᴛʜᴏʀ: ${AUTHOR}\n━━━━━━━━━━━━━━━`
+                        caption: captionText
                     });
 
                     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
