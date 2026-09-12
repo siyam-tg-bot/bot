@@ -13,13 +13,13 @@ const RANDOM_REPLIES = [
   "কী খবর বল? সব শান্তশিষ্ট তো? 🤖💫",
   "ডাকছো ভালো কথা, কিন্তু বেশি প্যানপ্যান করবা না! 🥱💤",
   "আরে প্রীতি শোনো! কি খবর তোমার? 🌺✨",
-  "হেই! আমাকে মনে পড়লো তাহলে? 🙈💖"
+  "হেই! আমাকে মনে পড়লো তাহলে? 🙈💖"
 ];
 
 module.exports = {
   name: "autoAiChat",
   aliases: ["ai", "botchat"],
-  version: "1.0.5",
+  version: "1.0.6",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "ai",
@@ -81,7 +81,7 @@ module.exports = {
         { headers: { "Content-Type": "application/json" }, timeout: 30000 }
       );
 
-      const replyText = res.data?.response || res.data?.message || res.data?.text || "কোনো উত্তর পাওয়া যায়নি। 😅";
+      const replyText = res.data?.response || res.data?.message || res.data?.text || "কোনো উত্তর পাওয়া যায়নি। 😅";
 
       await bot.editMessageText(
         `🤖 AI উত্তর:\n\n${replyText}`,
