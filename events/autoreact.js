@@ -1,18 +1,13 @@
-const config = require("../config");
-
 const EMOJIS = [
   "👍", "👎", "❤️", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱", 
   "🤬", "😢", "🎉", "🤩", "🤮", "💩", "🙏", "👌", "🕊️", "🤡", 
-  "🥱", "🥴", "😍", "🐳", "🌭", "💯", "🤣", "⚡", "🍌", "🏆", 
-  "💔", "🤨", "😐", "🍓", "🍾", "🍿", "🗣️", "🤝", "🫡", "👾", 
-  "🫠", "💅", "🗿", "💘", "🙈", "🙉", "🙊", "🤖", "🎃", "🎄", 
-  "💎", "👻"
+  "🥱", "🥴", "😍", "🐳", "🌚", "⚡", "🍌", "🏆", "💔", "🤨"
 ];
 
 module.exports = {
   name: "autoreact",
   aliases: ["react"],
-  version: "1.0.1",
+  version: "1.0.2",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "system",
@@ -21,8 +16,8 @@ module.exports = {
   hasPrefix: false,
   nonPrefix: true,
   handleEvent: true,
-  shortDescription: "Automatically reacts to all incoming messages",
-  longDescription: "Listens to all messages in groups or private chats and sends a random emoji reaction.",
+  shortDescription: "Automatically reacts to messages",
+  longDescription: "Listens to all messages and reacts with standard supported emojis.",
   guide: "autoreact",
 
   execute: async (bot, msg) => {
@@ -38,7 +33,6 @@ module.exports = {
 
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-
     const randomEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
 
     try {
@@ -47,7 +41,7 @@ module.exports = {
           reaction: [{ type: "emoji", emoji: randomEmoji }],
           is_big: false
         });
-      } else {
+      } else if (bot._request) {
         await bot._request("setMessageReaction", {
           chat_id: chatId,
           message_id: messageId,
