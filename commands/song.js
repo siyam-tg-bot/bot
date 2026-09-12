@@ -4,456 +4,354 @@ const path = require("path");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
 
-const execFileAsync = promisify(execFile);
+const exec = promisify(execFile);
 
-// ============================================================
-// CONFIGURATION
-// ============================================================
+const TEMP = path.join(process.cwd(), "temp_songs");
+const MAX = 49 * 1024 * 1024;
+const TIMEOUT = 180000;
+const RETRIES = 3;
 
-const CONFIG = {
-  TEMP_DIR: path.join(process.cwd(), "temp_songs"),
-
-  // Keep below Telegram's ~50 MB bot upload boundary.
-  MAX_FILE_SIZE: 49 * 1024 * 1024,
-
-  REQUEST_TIMEOUT: 30000,
-  DOWNLOAD_TIMEOUT: 180000,
-
-  MAX_RETRIES: 3,
-
-  // API providers
-  APIS: [
-    {
-      name: "DavidCyrilTech",
-      search:
-        "https://api.davidcyriltech.my.id/search/yt?q=",
-
-      download:
-        "https://api.davidcyriltech.my.id/download/ytmp3?url="
-    },
-
-    {
-      name: "Agatz",
-      search: null,
-
-      download:
-        "https://api.agatz.xyz/api/ytmp3?url="
-    },
-
-    {
-      name: "Dreaded",
-      search: null,
-
-      download:
-        "https://api.dreaded.site/api/ytdl/audio?url="
-    }
-  ]
-};
-
-
-// ============================================================
-// PREPARE TEMP DIRECTORY
-// ============================================================
-
-if (!fs.existsSync(CONFIG.TEMP_DIR)) {
-  fs.mkdirSync(CONFIG.TEMP_DIR, {
-    recursive: true
-  });
+if (!fs.existsSync(TEMP)) {
+  fs.mkdirSync(TEMP, { recursive: true });
 }
-
-
-// ============================================================
-// MAIN COMMAND
-// ============================================================
 
 module.exports = {
   name: "song",
-
-  aliases: [
-    "music",
-    "sing",
-    "audio"
-  ],
-
-  version: "3.0.0",
-
+  aliases: ["music", "sing", "audio"],
+  version: "4.0.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-
   role: 0,
-
-  shortDescription:
-    "Download and send songs as Telegram voice messages",
-
-  longDescription:
-    "Production song downloader with API fallback, yt-dlp fallback, automatic retry, MP3 conversion and Telegram size protection.",
-
+  shortDescription: "Download songs",
+  longDescription: "Search and download songs",
   category: "utility",
-
   guide: "{pn} <song name>",
 
-
-  // ==========================================================
-  // EXECUTE
-  // ==========================================================
-
   execute: async (bot, msg, args) => {
-
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
 
-    // --------------------------------------------------------
-    // Validate query
-    // --------------------------------------------------------
-
-    if (!args || args.length === 0) {
-
+    if (!args || !args.length) {
       return bot.sendMessage(
         chatId,
-
-        "*❌ PLEASE ENTER A SONG NAME!*\n\n" +
-        "*EXAMPLE:*\n" +
-        "`,song faded`",
-
+        "<b>❌ PLEASE ENTER A SONG NAME</b>\n\n<b>EXAMPLE: /song faded</b>",
         {
           reply_to_message_id: messageId,
-          parse_mode: "Markdown"
+          parse_mode: "HTML"
         }
       );
     }
 
-
-    const query = args
-      .join(" ")
-      .trim();
-
-
-    let loadingMsg = null;
-
-    let finalFile = null;
-
-    const jobId =
-      `${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(2, 10)}`;
-
+    const query = args.join(" ").trim();
+    const id = Date.now() + "_" + Math.random().toString(36).slice(2);
+    let loading = null;
+    let file = null;
+    let title = query;
 
     try {
-
-      // ======================================================
-      // LOADING
-      // ======================================================
-
-      loadingMsg =
-        await bot.sendMessage(
-
-          chatId,
-
-          `*🎵 SEARCHING SONG*\n\n` +
-          `*🔎 ${escapeMarkdown(query)}*\n\n` +
-          `*⏳ PLEASE WAIT...*`,
-
-          {
-            reply_to_message_id: messageId,
-            parse_mode: "Markdown"
-          }
-        );
-
-
-      // ======================================================
-      // STEP 1 — SEARCH YOUTUBE
-      // ======================================================
-
-      await updateLoading(
-        bot,
+      loading = await bot.sendMessage(
         chatId,
-        loadingMsg,
-        `*🔎 SEARCHING YOUTUBE*\n\n` +
-        `*🎵 ${escapeMarkdown(query)}*`
+        "<b>🔎 SEARCHING FOR YOUR SONG</b>\n\n<b>🎵 " +
+          escapeHtml(query) +
+          "</b>",
+        {
+          reply_to_message_id: messageId,
+          parse_mode: "HTML"
+        }
       );
 
+      let result = await ytdlpDownload(query, id);
 
-      const searchResult =
-        await searchYouTube(query);
-
-
-      if (!searchResult || !searchResult.url) {
-
-        throw new Error(
-          "SONG SEARCH FAILED."
-        );
+      if (result) {
+        file = result.file;
+        title = result.title || query;
       }
 
-
-      const videoUrl =
-        searchResult.url;
-
-      const title =
-        searchResult.title || query;
-
-
-      // ======================================================
-      // STEP 2 — TRY API DOWNLOADERS
-      // ======================================================
-
-      await updateLoading(
-        bot,
-        chatId,
-        loadingMsg,
-        `*🎧 SONG FOUND*\n\n` +
-        `*${escapeMarkdown(title)}*\n\n` +
-        `*⬇️ TRYING AUDIO SERVERS...*`
-      );
-
-
-      let downloaded = null;
-
-
-      // API FALLBACK
-      downloaded =
-        await tryApiDownloaders(
-          videoUrl,
-          jobId
-        );
-
-
-      // ======================================================
-      // STEP 3 — YT-DLP FALLBACK
-      // ======================================================
-
-      if (!downloaded) {
-
-        await updateLoading(
+      if (!file) {
+        await editLoading(
           bot,
           chatId,
-          loadingMsg,
-          `*⚡ API SERVERS FAILED*\n\n` +
-          `*🔄 SWITCHING TO YT-DLP...*`
+          loading,
+          "<b>🔄 TRYING BACKUP MUSIC SERVERS</b>\n\n<b>🎵 " +
+            escapeHtml(query) +
+            "</b>"
         );
 
+        result = await apiDownload(query, id);
 
-        downloaded =
-          await downloadWithYtDlp(
-            videoUrl,
-            jobId
-          );
-      }
-
-
-      // ======================================================
-      // STEP 4 — CHECK DOWNLOAD
-      // ======================================================
-
-      if (!downloaded) {
-
-        throw new Error(
-          "ALL DOWNLOAD METHODS FAILED."
-        );
-      }
-
-
-      // ======================================================
-      // STEP 5 — CONVERT TO TELEGRAM VOICE
-      // ======================================================
-
-      await updateLoading(
-        bot,
-        chatId,
-        loadingMsg,
-        `*🎶 PROCESSING AUDIO*\n\n` +
-        `*🔄 CONVERTING TO TELEGRAM VOICE FORMAT...*`
-      );
-
-
-      finalFile =
-        await prepareTelegramVoice(
-          downloaded,
-          jobId
-        );
-
-
-      // ======================================================
-      // STEP 6 — SIZE CHECK
-      // ======================================================
-
-      const fileSize =
-        fs.statSync(finalFile).size;
-
-
-      if (
-        fileSize <= 0 ||
-        fileSize > CONFIG.MAX_FILE_SIZE
-      ) {
-
-        throw new Error(
-          "AUDIO FILE IS TOO LARGE FOR TELEGRAM."
-        );
-      }
-
-
-      // ======================================================
-      // STEP 7 — SEND
-      // ======================================================
-
-      await updateLoading(
-        bot,
-        chatId,
-        loadingMsg,
-        `*📤 UPLOADING AUDIO*\n\n` +
-        `*🎧 ${escapeMarkdown(title)}*`
-      );
-
-
-      await bot.sendVoice(
-
-        chatId,
-
-        fs.createReadStream(finalFile),
-
-        {
-          reply_to_message_id: messageId,
-
-          caption:
-            `*🎧 ${escapeMarkdown(title)}*\n\n` +
-            `*🎵 SIYAM HASAN — NIZHUM CHAT BOT*`,
-
-          parse_mode: "Markdown"
+        if (result) {
+          file = result.file;
+          title = result.title || query;
         }
-      );
+      }
 
+      if (!file) {
+        throw new Error("ALL DOWNLOAD SERVERS FAILED");
+      }
 
-      // ======================================================
-      // SUCCESS
-      // ======================================================
-
-      await deleteLoading(
+      await editLoading(
         bot,
         chatId,
-        loadingMsg
+        loading,
+        "<b>🎧 PROCESSING YOUR SONG</b>\n\n<b>🔄 PREPARING TELEGRAM VOICE</b>"
       );
 
+      const voiceFile = await convertToVoice(file, id);
 
+      if (!voiceFile || !fs.existsSync(voiceFile)) {
+        throw new Error("AUDIO CONVERSION FAILED");
+      }
+
+      const size = fs.statSync(voiceFile).size;
+
+      if (!size || size > MAX) {
+        throw new Error("SONG FILE IS TOO LARGE");
+      }
+
+      await editLoading(
+        bot,
+        chatId,
+        loading,
+        "<b>📤 UPLOADING SONG</b>\n\n<b>🎵 " +
+          escapeHtml(title) +
+          "</b>"
+      );
+
+      await bot.sendVoice(chatId, fs.createReadStream(voiceFile), {
+        reply_to_message_id: messageId,
+        caption:
+          "<b>🎧 " +
+          escapeHtml(title) +
+          "</b>\n\n<b>SIYAM HASAN NIZHUM CHAT BOT</b>",
+        parse_mode: "HTML"
+      });
+
+      await removeLoading(bot, chatId, loading);
     } catch (error) {
+      console.error("SONG ERROR:", error);
 
-      console.error(
-        "[SONG ERROR]",
-        error
-      );
-
-
-      await deleteLoading(
-        bot,
-        chatId,
-        loadingMsg
-      );
-
+      await removeLoading(bot, chatId, loading);
 
       await bot.sendMessage(
-
         chatId,
-
-        `*❌ DOWNLOAD FAILED*\n\n` +
-        `*🎵 ${escapeMarkdown(query)}*\n\n` +
-        `*⚠️ ${escapeMarkdown(
-          error.message ||
-          "UNKNOWN ERROR"
-        )}*`,
-
+        "<b>❌ SONG DOWNLOAD FAILED</b>\n\n<b>🎵 " +
+          escapeHtml(query) +
+          "</b>\n\n<b>⚠️ " +
+          escapeHtml(error.message || "UNKNOWN ERROR") +
+          "</b>",
         {
           reply_to_message_id: messageId,
-          parse_mode: "Markdown"
+          parse_mode: "HTML"
         }
       );
-
-
     } finally {
-
-      // ======================================================
-      // CLEANUP
-      // ======================================================
-
-      cleanupJobFiles(jobId);
+      cleanup(id);
     }
   }
 };
 
+async function ytdlpDownload(query, id) {
+  const output = path.join(TEMP, id + "_yt.%(ext)s");
 
-// ============================================================
-// YOUTUBE SEARCH
-// ============================================================
-
-async function searchYouTube(query) {
-
-  // ----------------------------------------------------------
-  // API SEARCH
-  // ----------------------------------------------------------
-
-  for (const api of CONFIG.APIS) {
-
-    if (!api.search) {
-      continue;
-    }
-
+  for (let attempt = 1; attempt <= RETRIES; attempt++) {
     try {
-
-      const url =
-        api.search +
-        encodeURIComponent(query);
-
-
-      const response =
-        await axios.get(
-          url,
-          {
-            timeout:
-              CONFIG.REQUEST_TIMEOUT
-          }
-        );
-
-
-      const data =
-        response.data;
-
-
-      if (
-        data &&
-        data.status === 200 &&
-        Array.isArray(data.results) &&
-        data.results.length > 0
-      ) {
-
-        const result =
-          data.results[0];
-
-
-        if (result.url) {
-
-          return {
-            url: result.url,
-            title: result.title || query
-          };
+      const result = await exec(
+        "yt-dlp",
+        [
+          "--no-playlist",
+          "--no-warnings",
+          "--ignore-config",
+          "--default-search",
+          "ytsearch1",
+          "--retries",
+          "5",
+          "--fragment-retries",
+          "5",
+          "--extractor-retries",
+          "5",
+          "--socket-timeout",
+          "30",
+          "--max-filesize",
+          "49M",
+          "-x",
+          "--audio-format",
+          "mp3",
+          "--audio-quality",
+          "128K",
+          "--print",
+          "after_move:%(title)s",
+          "-o",
+          output,
+          query
+        ],
+        {
+          timeout: TIMEOUT,
+          maxBuffer: 20 * 1024 * 1024
         }
+      );
+
+      const file = findFile(id + "_yt");
+
+      if (!file) {
+        await sleep(attempt * 1500);
+        continue;
       }
 
-    } catch (error) {
+      const title =
+        result.stdout
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .pop() || query;
 
-      console.log(
-        `[SEARCH API FAILED] ${api.name}`
-      );
+      if (fs.statSync(file).size > MAX) {
+        safeDelete(file);
+        continue;
+      }
+
+      return {
+        file,
+        title
+      };
+    } catch (e) {
+      console.log("YT-DLP ATTEMPT", attempt, e.message);
+      await sleep(attempt * 1500);
     }
   }
 
+  return null;
+}
 
-  // ----------------------------------------------------------
-  // YT-DLP SEARCH FALLBACK
-  // ----------------------------------------------------------
+async function apiDownload(query, id) {
+  const urls = [];
 
   try {
+    const search = await axios.get(
+      "https://api.davidcyriltech.my.id/search/yt?q=" +
+        encodeURIComponent(query),
+      {
+        timeout: 30000
+      }
+    );
 
-    const result =
-      await execFileAsync(
+    if (
+      search.data &&
+      Array.isArray(search.data.results) &&
+      search.data.results.length
+    ) {
+      const item = search.data.results[0];
 
+      if (item.url) {
+        urls.push({
+          url: item.url,
+          title: item.title || query
+        });
+      }
+    }
+  } catch (e) {
+    console.log("SEARCH API FAILED");
+  }
+
+  if (!urls.length) {
+    try {
+      const direct = await getYtSearchUrl(query);
+
+      if (direct) {
+        urls.push({
+          url: direct.url,
+          title: direct.title || query
+        });
+      }
+    } catch (e) {}
+  }
+
+  for (const item of urls) {
+    const providers = [
+      async () => {
+        const r = await axios.get(
+          "https://api.davidcyriltech.my.id/download/ytmp3?url=" +
+            encodeURIComponent(item.url),
+          { timeout: 30000 }
+        );
+
+        return (
+          r.data &&
+          r.data.result &&
+          r.data.result.download_url
+        );
+      },
+
+      async () => {
+        const r = await axios.get(
+          "https://api.agatz.xyz/api/ytmp3?url=" +
+            encodeURIComponent(item.url),
+          { timeout: 30000 }
+        );
+
+        return (
+          r.data &&
+          r.data.data &&
+          r.data.data.downloadUrl
+        );
+      },
+
+      async () => {
+        const r = await axios.get(
+          "https://api.dreaded.site/api/ytdl/audio?url=" +
+            encodeURIComponent(item.url),
+          { timeout: 30000 }
+        );
+
+        return (
+          r.data &&
+          r.data.result &&
+          r.data.result.download
+        );
+      }
+    ];
+
+    for (const provider of providers) {
+      for (let attempt = 1; attempt <= RETRIES; attempt++) {
+        try {
+          const audioUrl = await provider();
+
+          if (!audioUrl) {
+            continue;
+          }
+
+          const file = await downloadFile(
+            audioUrl,
+            id + "_api"
+          );
+
+          if (!file) {
+            continue;
+          }
+
+          return {
+            file,
+            title: item.title
+          };
+        } catch (e) {
+          console.log(
+            "API DOWNLOAD ATTEMPT",
+            attempt,
+            e.message
+          );
+
+          await sleep(attempt * 1000);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+async function getYtSearchUrl(query) {
+  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+    try {
+      const result = await exec(
         "yt-dlp",
-
         [
           "--no-warnings",
           "--ignore-config",
@@ -462,844 +360,266 @@ async function searchYouTube(query) {
           "%(id)s|%(title)s",
           "ytsearch1:" + query
         ],
-
         {
-          timeout:
-            CONFIG.REQUEST_TIMEOUT,
-
-          maxBuffer:
-            1024 * 1024 * 5
+          timeout: 60000,
+          maxBuffer: 5 * 1024 * 1024
         }
       );
 
-
-    const line =
-      result.stdout
+      const line = result.stdout
         .trim()
-        .split("\n")[0];
+        .split("\n")
+        .filter(Boolean)[0];
 
-
-    if (!line) {
-      return null;
-    }
-
-
-    const separator =
-      line.indexOf("|");
-
-
-    const id =
-      line.substring(
-        0,
-        separator
-      );
-
-
-    const title =
-      line.substring(
-        separator + 1
-      );
-
-
-    if (!id) {
-      return null;
-    }
-
-
-    return {
-      url:
-        `https://www.youtube.com/watch?v=${id}`,
-
-      title:
-        title || query
-    };
-
-
-  } catch (error) {
-
-    console.log(
-      "[YT-DLP SEARCH FAILED]"
-    );
-
-    return null;
-  }
-}
-
-
-// ============================================================
-// API DOWNLOADERS
-// ============================================================
-
-async function tryApiDownloaders(
-  videoUrl,
-  jobId
-) {
-
-  for (const api of CONFIG.APIS) {
-
-    if (!api.download) {
-      continue;
-    }
-
-
-    console.log(
-      `[SONG] Trying ${api.name}`
-    );
-
-
-    for (
-      let attempt = 1;
-      attempt <= CONFIG.MAX_RETRIES;
-      attempt++
-    ) {
-
-      try {
-
-        const apiUrl =
-          api.download +
-          encodeURIComponent(videoUrl);
-
-
-        const response =
-          await axios.get(
-
-            apiUrl,
-
-            {
-              timeout:
-                CONFIG.REQUEST_TIMEOUT
-            }
-          );
-
-
-        const downloadUrl =
-          extractDownloadUrl(
-            response.data
-          );
-
-
-        if (!downloadUrl) {
-          continue;
-        }
-
-
-        // Download actual audio locally
-        const file =
-          await downloadRemoteFile(
-            downloadUrl,
-            jobId
-          );
-
-
-        if (file) {
-          return file;
-        }
-
-
-      } catch (error) {
-
-        console.log(
-          `[${api.name}] Attempt ${attempt}/${CONFIG.MAX_RETRIES} failed`
-        );
-
-
-        await sleep(
-          attempt * 1000
-        );
+      if (!line) {
+        continue;
       }
+
+      const index = line.indexOf("|");
+
+      if (index === -1) {
+        continue;
+      }
+
+      const id = line.slice(0, index).trim();
+      const title = line.slice(index + 1).trim();
+
+      if (!id) {
+        continue;
+      }
+
+      return {
+        url: "https://www.youtube.com/watch?v=" + id,
+        title
+      };
+    } catch (e) {
+      await sleep(attempt * 1000);
     }
   }
-
 
   return null;
 }
 
-
-// ============================================================
-// EXTRACT API DOWNLOAD URL
-// ============================================================
-
-function extractDownloadUrl(data) {
-
-  if (!data) {
-    return null;
-  }
-
-
-  // DavidCyrilTech
-  if (
-    data.result &&
-    data.result.download_url
-  ) {
-
-    return data.result.download_url;
-  }
-
-
-  // Agatz
-  if (
-    data.data &&
-    data.data.downloadUrl
-  ) {
-
-    return data.data.downloadUrl;
-  }
-
-
-  // Generic formats
-  if (
-    data.download_url
-  ) {
-
-    return data.download_url;
-  }
-
-
-  if (
-    data.downloadUrl
-  ) {
-
-    return data.downloadUrl;
-  }
-
-
-  if (
-    data.url &&
-    typeof data.url === "string"
-  ) {
-
-    return data.url;
-  }
-
-
-  if (
-    data.result &&
-    typeof data.result === "string"
-  ) {
-
-    return data.result;
-  }
-
-
-  return null;
-}
-
-
-// ============================================================
-// DOWNLOAD REMOTE FILE
-// ============================================================
-
-async function downloadRemoteFile(
-  url,
-  jobId
-) {
-
+async function downloadFile(url, name) {
   try {
+    const response = await axios.get(url, {
+      responseType: "stream",
+      timeout: TIMEOUT,
+      maxContentLength: MAX,
+      maxBodyLength: MAX
+    });
 
-    const extension =
-      getExtensionFromUrl(url) ||
-      "mp3";
-
-
-    const filePath =
-      path.join(
-        CONFIG.TEMP_DIR,
-        `${jobId}_api.${extension}`
-      );
-
-
-    const response =
-      await axios.get(
-
-        url,
-
-        {
-          responseType: "stream",
-
-          timeout:
-            CONFIG.DOWNLOAD_TIMEOUT,
-
-          maxContentLength:
-            CONFIG.MAX_FILE_SIZE,
-
-          maxBodyLength:
-            CONFIG.MAX_FILE_SIZE
-        }
-      );
-
-
-    return await saveStream(
-      response.data,
-      filePath
+    const type = getExtension(
+      response.headers["content-type"]
     );
 
-
-  } catch (error) {
-
-    console.log(
-      "[REMOTE AUDIO DOWNLOAD FAILED]",
-      error.message
+    const file = path.join(
+      TEMP,
+      name + "." + type
     );
 
-    return null;
-  }
-}
+    let received = 0;
 
+    return await new Promise((resolve, reject) => {
+      const writer = fs.createWriteStream(file);
 
-// ============================================================
-// YT-DLP DOWNLOAD
-// ============================================================
+      response.data.on("data", chunk => {
+        received += chunk.length;
 
-async function downloadWithYtDlp(
-  videoUrl,
-  jobId
-) {
-
-  const opusOutput =
-    path.join(
-      CONFIG.TEMP_DIR,
-      `${jobId}_yt.%(ext)s`
-    );
-
-
-  // ----------------------------------------------------------
-  // First attempt: OPUS
-  // ----------------------------------------------------------
-
-  try {
-
-    await execFileAsync(
-
-      "yt-dlp",
-
-      [
-        "--no-playlist",
-        "--no-warnings",
-        "--ignore-config",
-
-        "--socket-timeout",
-        "30",
-
-        "--retries",
-        "3",
-
-        "--fragment-retries",
-        "3",
-
-        "-x",
-
-        "--audio-format",
-        "opus",
-
-        "--audio-quality",
-        "96K",
-
-        "-o",
-        opusOutput,
-
-        videoUrl
-      ],
-
-      {
-        timeout:
-          CONFIG.DOWNLOAD_TIMEOUT,
-
-        maxBuffer:
-          1024 * 1024 * 10
-      }
-    );
-
-
-    const file =
-      findJobFile(jobId);
-
-
-    if (file) {
-      return file;
-    }
-
-
-  } catch (error) {
-
-    console.log(
-      "[YT-DLP OPUS FAILED]"
-    );
-  }
-
-
-  // ----------------------------------------------------------
-  // SECOND ATTEMPT: BEST AUDIO / MP3
-  // ----------------------------------------------------------
-
-  try {
-
-    await execFileAsync(
-
-      "yt-dlp",
-
-      [
-        "--no-playlist",
-        "--no-warnings",
-        "--ignore-config",
-
-        "--socket-timeout",
-        "30",
-
-        "--retries",
-        "3",
-
-        "--fragment-retries",
-        "3",
-
-        "-x",
-
-        "--audio-format",
-        "mp3",
-
-        "--audio-quality",
-        "128K",
-
-        "-o",
-
-        path.join(
-          CONFIG.TEMP_DIR,
-          `${jobId}_mp3.%(ext)s`
-        ),
-
-        videoUrl
-      ],
-
-      {
-        timeout:
-          CONFIG.DOWNLOAD_TIMEOUT,
-
-        maxBuffer:
-          1024 * 1024 * 10
-      }
-    );
-
-
-    const file =
-      findJobFile(jobId);
-
-
-    if (file) {
-      return file;
-    }
-
-
-  } catch (error) {
-
-    console.log(
-      "[YT-DLP MP3 FALLBACK FAILED]"
-    );
-  }
-
-
-  return null;
-}
-
-
-// ============================================================
-// CONVERT AUDIO TO TELEGRAM VOICE
-// ============================================================
-
-async function prepareTelegramVoice(
-  inputFile,
-  jobId
-) {
-
-  const outputFile =
-    path.join(
-      CONFIG.TEMP_DIR,
-      `${jobId}_final.ogg`
-    );
-
-
-  // If already OGG, still re-encode to ensure OPUS.
-  await execFileAsync(
-
-    "ffmpeg",
-
-    [
-      "-y",
-
-      "-i",
-      inputFile,
-
-      "-vn",
-
-      "-c:a",
-      "libopus",
-
-      "-b:a",
-      "64k",
-
-      "-vbr",
-      "on",
-
-      "-application",
-      "audio",
-
-      outputFile
-    ],
-
-    {
-      timeout:
-        CONFIG.DOWNLOAD_TIMEOUT,
-
-      maxBuffer:
-        1024 * 1024 * 10
-    }
-  );
-
-
-  if (
-    !fs.existsSync(outputFile)
-  ) {
-
-    throw new Error(
-      "AUDIO CONVERSION FAILED."
-    );
-  }
-
-
-  const size =
-    fs.statSync(outputFile).size;
-
-
-  if (
-    size <= 0
-  ) {
-
-    throw new Error(
-      "CONVERTED AUDIO IS EMPTY."
-    );
-  }
-
-
-  if (
-    size > CONFIG.MAX_FILE_SIZE
-  ) {
-
-    throw new Error(
-      "AUDIO IS OVER TELEGRAM'S 50 MB LIMIT."
-    );
-  }
-
-
-  return outputFile;
-}
-
-
-// ============================================================
-// SAVE STREAM
-// ============================================================
-
-function saveStream(
-  stream,
-  filePath
-) {
-
-  return new Promise(
-    (resolve, reject) => {
-
-      const writer =
-        fs.createWriteStream(
-          filePath
-        );
-
-
-      let size = 0;
-
-
-      stream.on(
-        "data",
-        (chunk) => {
-
-          size += chunk.length;
-
-
-          if (
-            size > CONFIG.MAX_FILE_SIZE
-          ) {
-
-            stream.destroy();
-
-            writer.destroy();
-
-            try {
-              fs.unlinkSync(filePath);
-            } catch (e) {}
-
-            reject(
-              new Error(
-                "AUDIO FILE EXCEEDS 50 MB."
-              )
-            );
-          }
-        }
-      );
-
-
-      stream.on(
-        "error",
-        (error) => {
-
+        if (received > MAX) {
+          response.data.destroy();
           writer.destroy();
-
-          try {
-            fs.unlinkSync(filePath);
-          } catch (e) {}
-
-          reject(error);
+          safeDelete(file);
+          reject(new Error("FILE TOO LARGE"));
         }
-      );
+      });
 
+      response.data.on("error", error => {
+        writer.destroy();
+        safeDelete(file);
+        reject(error);
+      });
 
-      writer.on(
-        "finish",
-        () => {
-
-          if (size <= 0) {
-
-            reject(
-              new Error(
-                "EMPTY AUDIO FILE."
-              )
-            );
-
-            return;
-          }
-
-
-          resolve(filePath);
+      writer.on("finish", () => {
+        if (!fs.existsSync(file)) {
+          return reject(new Error("DOWNLOAD FAILED"));
         }
-      );
 
+        if (fs.statSync(file).size > MAX) {
+          safeDelete(file);
+          return reject(new Error("FILE TOO LARGE"));
+        }
 
-      writer.on(
-        "error",
-        reject
-      );
+        resolve(file);
+      });
 
+      writer.on("error", error => {
+        safeDelete(file);
+        reject(error);
+      });
 
-      stream.pipe(writer);
-    }
-  );
-}
-
-
-// ============================================================
-// FIND JOB FILE
-// ============================================================
-
-function findJobFile(jobId) {
-
-  const files =
-    fs.readdirSync(
-      CONFIG.TEMP_DIR
-    );
-
-
-  const matches =
-    files.filter(
-      file =>
-        file.startsWith(jobId)
-    );
-
-
-  if (
-    matches.length === 0
-  ) {
-
+      response.data.pipe(writer);
+    });
+  } catch (e) {
+    console.log("REMOTE DOWNLOAD FAILED:", e.message);
     return null;
   }
-
-
-  // Never return the final file here.
-  const usable =
-    matches.find(
-      file =>
-        !file.endsWith("_final.ogg")
-    );
-
-
-  return usable
-    ? path.join(
-        CONFIG.TEMP_DIR,
-        usable
-      )
-    : null;
 }
 
+async function convertToVoice(input, id) {
+  const output = path.join(
+    TEMP,
+    id + "_voice.ogg"
+  );
 
-// ============================================================
-// CLEANUP
-// ============================================================
-
-function cleanupJobFiles(
-  jobId
-) {
-
-  try {
-
-    const files =
-      fs.readdirSync(
-        CONFIG.TEMP_DIR
+  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+    try {
+      await exec(
+        "ffmpeg",
+        [
+          "-y",
+          "-i",
+          input,
+          "-vn",
+          "-map_metadata",
+          "-1",
+          "-c:a",
+          "libopus",
+          "-b:a",
+          "64k",
+          "-vbr",
+          "on",
+          "-application",
+          "audio",
+          output
+        ],
+        {
+          timeout: TIMEOUT,
+          maxBuffer: 10 * 1024 * 1024
+        }
       );
 
+      if (!fs.existsSync(output)) {
+        continue;
+      }
+
+      const size = fs.statSync(output).size;
+
+      if (!size || size > MAX) {
+        safeDelete(output);
+        continue;
+      }
+
+      return output;
+    } catch (e) {
+      console.log(
+        "FFMPEG ATTEMPT",
+        attempt,
+        e.message
+      );
+
+      await sleep(attempt * 1000);
+    }
+  }
+
+  return null;
+}
+
+function findFile(prefix) {
+  try {
+    const files = fs.readdirSync(TEMP);
+
+    const match = files.find(
+      file =>
+        file.startsWith(prefix) &&
+        !file.endsWith(".part") &&
+        !file.endsWith(".ytdl")
+    );
+
+    return match
+      ? path.join(TEMP, match)
+      : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function cleanup(id) {
+  try {
+    const files = fs.readdirSync(TEMP);
 
     for (const file of files) {
-
-      if (
-        file.startsWith(jobId)
-      ) {
-
-        try {
-
-          fs.unlinkSync(
-            path.join(
-              CONFIG.TEMP_DIR,
-              file
-            )
-          );
-
-        } catch (e) {}
+      if (file.startsWith(id)) {
+        safeDelete(path.join(TEMP, file));
       }
     }
-
   } catch (e) {}
 }
 
+function safeDelete(file) {
+  try {
+    if (fs.existsSync(file)) {
+      fs.unlinkSync(file);
+    }
+  } catch (e) {}
+}
 
-// ============================================================
-// EXTENSION
-// ============================================================
-
-function getExtensionFromUrl(
-  url
+async function editLoading(
+  bot,
+  chatId,
+  loading,
+  text
 ) {
+  if (!loading) return;
 
   try {
-
-    const pathname =
-      new URL(url).pathname;
-
-
-    const ext =
-      path.extname(pathname)
-        .replace(".", "")
-        .toLowerCase();
-
-
-    const allowed = [
-      "mp3",
-      "m4a",
-      "aac",
-      "opus",
-      "ogg",
-      "webm",
-      "wav"
-    ];
-
-
-    if (
-      allowed.includes(ext)
-    ) {
-
-      return ext;
-    }
-
+    await bot.editMessageText(
+      chatId,
+      loading.message_id,
+      text,
+      {
+        parse_mode: "HTML"
+      }
+    );
   } catch (e) {}
+}
 
+async function removeLoading(
+  bot,
+  chatId,
+  loading
+) {
+  if (!loading) return;
+
+  try {
+    await bot.deleteMessage(
+      chatId,
+      loading.message_id
+    );
+  } catch (e) {}
+}
+
+function getExtension(contentType) {
+  if (!contentType) return "mp3";
+
+  if (contentType.includes("mpeg")) return "mp3";
+  if (contentType.includes("mp4")) return "m4a";
+  if (contentType.includes("ogg")) return "ogg";
+  if (contentType.includes("opus")) return "opus";
+  if (contentType.includes("webm")) return "webm";
+  if (contentType.includes("aac")) return "aac";
 
   return "mp3";
 }
 
-
-// ============================================================
-// LOADING MESSAGE
-// ============================================================
-
-async function updateLoading(
-  bot,
-  chatId,
-  loadingMsg,
-  text
-) {
-
-  if (!loadingMsg) {
-    return;
-  }
-
-
-  try {
-
-    await bot.editMessageText(
-      chatId,
-      loadingMsg.message_id,
-      text,
-      {
-        parse_mode: "Markdown"
-      }
-    );
-
-  } catch (e) {}
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
-
-
-// ============================================================
-// DELETE LOADING
-// ============================================================
-
-async function deleteLoading(
-  bot,
-  chatId,
-  loadingMsg
-) {
-
-  if (!loadingMsg) {
-    return;
-  }
-
-
-  try {
-
-    await bot.deleteMessage(
-      chatId,
-      loadingMsg.message_id
-    );
-
-  } catch (e) {}
-}
-
-
-// ============================================================
-// RETRY DELAY
-// ============================================================
 
 function sleep(ms) {
-
-  return new Promise(
-    resolve =>
-      setTimeout(
-        resolve,
-        ms
-      )
-  );
-}
-
-
-// ============================================================
-// MARKDOWN ESCAPER
-// ============================================================
-
-function escapeMarkdown(text) {
-
-  return String(text)
-    .replace(
-      /([_*[\]()~`>#+\-=|{}.!])/g,
-      "\\$1"
-    );
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
