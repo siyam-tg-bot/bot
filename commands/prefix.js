@@ -3,13 +3,15 @@ const config = require("../config");
 module.exports = {
   name: "prefix",
   aliases: ["pfx", "পোল"],
-  version: "1.0.8",
+  version: "1.0.9",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "system",
   usePrefix: false,
   noPrefix: true,
   hasPrefix: false,
+  nonPrefix: true,
+  handleEvent: true,
   shortDescription: "Shows current bot prefix and system info",
   longDescription: "Displays the active prefix, total loaded commands, and status with interactive buttons.",
   guide: "prefix",
@@ -75,5 +77,13 @@ module.exports = {
         ]
       }
     });
+  },
+
+  onEvent: async function ({ bot, msg, extra }) {
+    if (!msg || !msg.text) return;
+    const text = msg.text.trim().toLowerCase();
+    if (text === "prefix" || text === "pfx" || text === "পোল") {
+      return module.exports.execute(bot, msg, [], extra);
+    }
   }
 };
