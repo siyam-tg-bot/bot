@@ -3,7 +3,7 @@ const config = require("../config");
 
 const AUTHOR = "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
 const COMMAND_NAME = "downloader";
-const API_TIMEOUT = 20000;
+const API_TIMEOUT = 25000;
 
 function extractUrl(text) {
   if (!text) return null;
@@ -85,6 +85,14 @@ async function tryDownload(targetUrl) {
   
   const downloadTasks = [
     async () => {
+      const res = await axios.get(`https://www.tikwm.com/api/?url=${encoded}`, { timeout: API_TIMEOUT });
+      if (res.data && res.data.data && res.data.data.play) {
+        const playUrl = res.data.data.play.startsWith("http") ? res.data.data.play : `https://www.tikwm.com${res.data.data.play}`;
+        return { videoUrl: playUrl, title: res.data.data.title || "TIKTOK VIDEO", api: "TIKWM" };
+      }
+      return null;
+    },
+    async () => {
       const res = await axios.post("https://api.cobalt.tools/api/json", { url: targetUrl }, {
         headers: { "Accept": "application/json", "Content-Type": "application/json" },
         timeout: API_TIMEOUT
@@ -109,14 +117,6 @@ async function tryDownload(targetUrl) {
         return { videoUrl, title: findTitle(res.data), api: "MAHMUD-SERVER" };
       }
       return null;
-    },
-    async () => {
-      const res = await axios.get(`https://www.tikwm.com/api/?url=${encoded}`, { timeout: API_TIMEOUT });
-      if (res.data && res.data.data && res.data.data.play) {
-        const playUrl = res.data.data.play.startsWith("http") ? res.data.data.play : `https://www.tikwm.com${res.data.data.play}`;
-        return { videoUrl: playUrl, title: res.data.data.title || "TIKTOK VIDEO", api: "TIKWM" };
-      }
-      return null;
     }
   ];
 
@@ -135,19 +135,19 @@ async function tryDownload(targetUrl) {
 module.exports = {
   name: COMMAND_NAME,
   aliases: ["autodl", "dl", "download"],
-  version: "3.1.0",
+  version: "3.2.0",
   author: AUTHOR,
   role: 0,
   category: "media",
+  usePrefix: false,
+  noPrefix: true,
+  hasPrefix: false,
+  handleEvent: true,
   shortDescription: "Auto downloader for social media videos",
   longDescription: "Downloads videos automatically from Facebook, TikTok, Instagram & YouTube links.",
   guide: "downloader [video link]",
 
   execute: async (bot, msg, args) => {
-    if (module.exports.author !== AUTHOR || module.exports.name !== COMMAND_NAME) {
-      return;
-    }
-
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
     const messageText = (args && args.join(" ")) || msg.text || msg.caption || "";
@@ -175,10 +175,12 @@ module.exports = {
 ───────────────
 ⏳ 𝐅𝐄𝐓𝐂𝐇𝐈𝐍𝐆 𝐌𝐄𝐃𝐈𝐀 𝐈𝐍𝐅𝐎...
 ───────────────
-⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
+⚡  𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
         { reply_to_message_id: messageId }
       );
-    } catch (e) {}
+    } catch (e) {
+      return;
+    }
 
     try {
       const result = await tryDownload(url);
