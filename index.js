@@ -131,6 +131,22 @@ function getUserRole(userId) {
 
 const activeReplies = new Map();
 
+bot.on('callback_query', async (query) => {
+    const data = query.data;
+    if (!data) return;
+
+    try {
+        if (data.startsWith('cmd_')) {
+            const cmdManager = commands.get('cmd');
+            if (cmdManager && typeof cmdManager.handleCallback === 'function') {
+                return await cmdManager.handleCallback(bot, query);
+            }
+        }
+    } catch (err) {
+        console.error('Callback Query Error:', err.message);
+    }
+});
+
 bot.on('message', async (msg) => {
     try {
         if (!msg || !msg.chat) return;
@@ -226,6 +242,12 @@ bot.on('message', async (msg) => {
 
                 try {
                     const execFunc = command.execute || command.onStart;
+                    
+                    // Support both old style (bot, msg, args) and new style ({ bot, msg, args })
+                    if (command.execute && command.execute.length >= 3 && !command.config) {
+                        return await command.execute(bot, msg, args);
+                    }
+
                     return await execFunc({
                         bot,
                         msg,
@@ -267,13 +289,7 @@ bot.on('message', async (msg) => {
     }
 });
 
-console.log('Telegram Bot Engine Active and Ready!');xp(`%${idx + 1}`, 'g'), val);
-                                });
-                                return str;
-                            }
-                            return key;
-                        },
-                        usersData: {
+console.log('Telegram Bot Engine Active and Ready!');sersData: {
                             getName: async (uid) => {
                                 try {
                                     const chatMember = await bot.getChatMember(chatId, uid);
