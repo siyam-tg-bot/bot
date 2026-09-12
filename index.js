@@ -312,38 +312,4 @@ bot.on('message', async (msg) => {
     }
 });
 
-console.log('Telegram Bot Engine Active and Ready!');         str = str.replace(new RegExp(`%${idx + 1}`, 'g'), val);
-                                });
-                                return str;
-                            }
-                            return key;
-                        },
-                        usersData: {
-                            getName: async (uid) => {
-                                try {
-                                    const chatMember = await bot.getChatMember(chatId, uid);
-                                    return chatMember.user.first_name || "User";
-                                } catch {
-                                    return "User";
-                                }
-                            }
-                        }
-                    });
-                } catch (error) {
-                    console.error(`Error executing ${actualCommandName}:`, error);
-                    return bot.sendMessage(chatId, 'কমান্ডটি রান করতে সমস্যা হয়েছে!');
-                }
-            } else {
-                let notFoundMsg = getLangText('handlerEvents.commandNotFound', [inputCommand, currentPrefix]);
-                if (!notFoundMsg) {
-                    notFoundMsg = `COMMAND "${inputCommand}" DOES NOT EXIST, TYPE ${currentPrefix}help TO SEE ALL AVAILABLE COMMANDS`;
-                }
-                return bot.sendMessage(chatId, notFoundMsg);
-            }
-        }
-    } catch (globalMsgErr) {
-        console.error("Global Message Processing Error:", globalMsgErr.message);
-    }
-});
-
 console.log('Telegram Bot Engine Active and Ready!');
