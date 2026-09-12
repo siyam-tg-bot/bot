@@ -6,7 +6,7 @@ const { createCanvas, loadImage } = require("canvas");
 module.exports = {
   config: {
     name: "goru",
-    version: "2.5",
+    version: "2.6",
     author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
     countDown: 5,
     role: 0,
@@ -19,41 +19,15 @@ module.exports = {
   onStart: async function ({ bot, msg, args }) {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    let targetID = msg.from.id;
     let targetName = msg.from.first_name || "Someone";
 
     if (msg.reply_to_message && msg.reply_to_message.from) {
-      targetID = msg.reply_to_message.from.id;
       targetName = msg.reply_to_message.from.first_name || "Someone";
     }
 
     let waitMsg;
     try {
       waitMsg = await bot.sendMessage(chatId, "⌛️ Wait kor...", { reply_to_message_id: messageId });
-
-      const fetchAvatar = async (uid) => {
-        try {
-          const userPhotos = await bot.getUserProfilePhotos(uid, { limit: 1 });
-          if (userPhotos && userPhotos.total_count > 0 && userPhotos.photos[0][0]) {
-            const fileId = userPhotos.photos[0][0].file_id;
-            const file = await bot.getFile(fileId);
-            if (file && file.file_path) {
-              const fileLink = `https://api.telegram.org/file/bot${bot.token}/${file.file_path}`;
-              const response = await axios.get(fileLink, {
-                responseType: "arraybuffer",
-                timeout: 15000
-              });
-              return Buffer.from(response.data);
-            }
-          }
-        } catch (e) {}
-
-        const fallbackRes = await axios.get("https://i.imgur.com/74d53Qy.png", {
-          responseType: "arraybuffer",
-          timeout: 15000
-        });
-        return Buffer.from(fallbackRes.data);
-      };
 
       const cacheDir = path.join(__dirname, "goru_cache");
       await fs.ensureDir(cacheDir);
@@ -73,8 +47,11 @@ module.exports = {
         bgImage = await loadImage(Buffer.from(bgResponse.data));
       }
 
-      const avatarBuffer = await fetchAvatar(targetID);
-      const avatarImage = await loadImage(avatarBuffer);
+      const avatarRes = await axios.get("https://i.imgur.com/74d53Qy.png", {
+        responseType: "arraybuffer",
+        timeout: 15000
+      });
+      const avatarImage = await loadImage(Buffer.from(avatarRes.data));
 
       const canvas = createCanvas(bgImage.width, bgImage.height);
       const ctx = canvas.getContext("2d");
@@ -115,7 +92,7 @@ module.exports = {
 
       const outputPath = path.join(
         cacheDir,
-        `goru_${targetID}_${Date.now()}.png`
+        `goru_${Date.now()}.png`
       );
       const buffer = canvas.toBuffer("image/png");
       await fs.writeFile(outputPath, buffer);
