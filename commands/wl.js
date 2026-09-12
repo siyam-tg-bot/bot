@@ -1,16 +1,14 @@
 const { writeFileSync } = require("fs-extra");
 const moment = require("moment-timezone");
 const path = require("path");
+const config = require("../config"); 
 
 module.exports = {
-	config: {
-		name: "wl",
-		version: "2.0",
-		author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-		countDown: 5,
-		role: 2,
-		category: "owner"
-	},
+	name: "wl",
+	version: "2.0",
+	author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
+	role: 2, 
+	category: "owner",
 
 	langs: {
 		en: {
@@ -22,9 +20,9 @@ module.exports = {
 		}
 	},
 
-	onStart: async function ({ bot, msg, args, usersData, getLang }) {
+	onStart: async function ({ bot, msg, args, getLang }) {
 		const chatId = msg.chat.id;
-		const configPath = path.join(__dirname, "../config.json");
+		const configPath = path.join(__dirname, "../config.json"); 
 
 		switch (args[0]) {
 			case "add":
@@ -50,16 +48,10 @@ module.exports = {
 					}
 				}
 
-				writeFileSync(configPath, JSON.stringify(config, null, 2));
+				try { writeFileSync(configPath, JSON.stringify(config, null, 2)); } catch(e) { console.log("Config save error", e) }
 
-				const names = await Promise.all(
-					added.map(async (uid) => {
-						const name = await usersData.getName(uid);
-						return `• ${name} (${uid})`;
-					})
-				);
-
-				return bot.sendMessage(chatId, getLang("added", names.join("\n")));
+				const names = added.map(uid => `• [User](tg://user?id=${uid}) (${uid})`);
+				return bot.sendMessage(chatId, getLang("added", names.join("\n")), { parse_mode: "Markdown" });
 			}
 
 			case "remove":
@@ -80,24 +72,15 @@ module.exports = {
 
 				for (const uid of uids) {
 					if (config.whitelistMode.whiteListIds.includes(uid)) {
-						config.whitelistMode.whiteListIds.splice(
-							config.whitelistMode.whiteListIds.indexOf(uid),
-							1
-						);
+						config.whitelistMode.whiteListIds.splice(config.whitelistMode.whiteListIds.indexOf(uid), 1);
 						removed.push(uid);
 					}
 				}
 
-				writeFileSync(configPath, JSON.stringify(config, null, 2));
+				try { writeFileSync(configPath, JSON.stringify(config, null, 2)); } catch(e) { console.log("Config save error", e) }
 
-				const names = await Promise.all(
-					removed.map(async (uid) => {
-						const name = await usersData.getName(uid);
-						return `• ${name} (${uid})`;
-					})
-				);
-
-				return bot.sendMessage(chatId, getLang("removed", names.join("\n")));
+				const names = removed.map(uid => `• [User](tg://user?id=${uid}) (${uid})`);
+				return bot.sendMessage(chatId, getLang("removed", names.join("\n")), { parse_mode: "Markdown" });
 			}
 
 			case "list":
@@ -106,65 +89,29 @@ module.exports = {
 					return bot.sendMessage(chatId, getLang("listAdmin", "No users found."));
 				}
 
-				const names = await Promise.all(
-					config.whitelistMode.whiteListIds.map(async (uid) => {
-						const name = await usersData.getName(uid);
-						return `• ${name} (${uid})`;
-					})
-				);
-
-				return bot.sendMessage(chatId, getLang("listAdmin", names.join("\n")));
+				const names = config.whitelistMode.whiteListIds.map(uid => `• [User](tg://user?id=${uid}) (${uid})`);
+				return bot.sendMessage(chatId, getLang("listAdmin", names.join("\n")), { parse_mode: "Markdown" });
 			}
 
 			case "on": {
 				if (!config.whitelistMode) config.whitelistMode = { enable: false, whiteListIds: [] };
 				config.whitelistMode.enable = true;
-				writeFileSync(configPath, JSON.stringify(config, null, 2));
+				try { writeFileSync(configPath, JSON.stringify(config, null, 2)); } catch(e) { console.log("Config save error", e) }
 
 				const time = moment().tz("Asia/Dhaka").format("hh:mm A");
 				const date = moment().tz("Asia/Dhaka").format("DD MMMM YYYY");
-
-				const textMsg = `
-👑  𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍  👑
-
-𝐖𝐇𝐈𝐓𝐄 𝐋𝐈𝐒𝐓 𝐌𝐎𝐃𝐄 𝐄𝐍𝐀𝐁𝐋𝐄𝐃
-
-🔐  𝐀𝐂𝐂𝐄𝐒𝐒 :
-   🐸এখন শুধু আমার বস সিয়াম🪬
-   বট ব্যবহার করতে পারবে 👑
-
-📅  𝐃𝐚𝐭𝐞 : ${date}
-⏰  𝐓𝐢𝐦𝐞 : ${time}
-
-👑  𝐍𝐈𝐉𝐇𝐔𝐌 𝐂𝐇𝐀𝐓 𝐁𝐎𝐓  👑
-`;
-
+				const textMsg = `👑  𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍  👑\n\n𝐖𝐇𝐈𝐓𝐄 𝐋𝐈𝐒𝐓 𝐌𝐎𝐃𝐄 𝐄𝐍𝐀𝐁𝐋𝐄𝐃\n\n🔐  𝐀𝐂𝐂𝐄𝐒𝐒 :\n   🐸এখন শুধু আমার বস সিয়াম🪬\n   বট ব্যবহার করতে পারবে 👑\n\n📅  𝐃𝐚𝐭𝐞 : ${date}\n⏰  𝐓𝐢𝐦𝐞 : ${time}\n\n👑  𝐍𝐈𝐉𝐇𝐔𝐌 𝐂𝐇𝐀𝐓 𝐁𝐎𝐓  👑`;
 				return bot.sendMessage(chatId, textMsg);
 			}
 
 			case "off": {
 				if (!config.whitelistMode) config.whitelistMode = { enable: false, whiteListIds: [] };
 				config.whitelistMode.enable = false;
-				writeFileSync(configPath, JSON.stringify(config, null, 2));
+				try { writeFileSync(configPath, JSON.stringify(config, null, 2)); } catch(e) { console.log("Config save error", e) }
 
 				const time = moment().tz("Asia/Dhaka").format("hh:mm A");
 				const date = moment().tz("Asia/Dhaka").format("DD MMMM YYYY");
-
-				const textMsg = `
-👑  𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍  👑
-
-𝐖𝐇𝐈𝐓𝐄 𝐋𝐈𝐒𝐓 𝐌𝐎𝐃𝐄 𝐃𝐈𝐒𝐀𝐁𝐋𝐄𝐃
-
-🌐  𝐀𝐂𝐂𝐄𝐒𝐒 :
-   এখন সবাই বট ব্যবহার🪬
-   করতে পারবে 🎉
-
-📅  𝐃𝐚𝐭𝐞 : ${date}
-⏰  𝐓𝐢𝐦𝐞 : ${time}
-
-👑  𝐍𝐈𝐉𝐇𝐔𝐌 𝐂𝐇𝐀𝐓 𝐁𝐎𝐓  👑
-`;
-
+				const textMsg = `👑  𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍  👑\n\n𝐖𝐇𝐈𝐓𝐄 𝐋𝐈𝐒𝐓 𝐌𝐎𝐃𝐄 𝐃𝐈𝐒𝐀𝐁𝐋𝐄𝐃\n\n🌐  𝐀𝐂𝐂𝐄𝐒𝐒 :\n   এখন সবাই বট ব্যবহার🪬\n   করতে পারবে 🎉\n\n📅  𝐃𝐚𝐭𝐞 : ${date}\n⏰  𝐓𝐢𝐦𝐞 : ${time}\n\n👑  𝐍𝐈𝐉𝐇𝐔𝐌 𝐂𝐇𝐀𝐓 𝐁𝐎𝐓  👑`;
 				return bot.sendMessage(chatId, textMsg);
 			}
 
