@@ -1,23 +1,21 @@
 const os = require("os");
-const config = require("../config");
 
 module.exports = {
   name: "up",
   aliases: ["uptime", "status", "আপ", "system"],
   version: "2.5.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-  role: 0, // Everyone can use
+  role: 0, 
   category: "system",
   shortDescription: "Shows bot uptime and system specs",
   longDescription: "Displays bot running time, ping, system RAM, CPU usage, and server details.",
   guide: "{pn}",
 
-  execute: async (bot, msg) => {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
     const startPing = Date.now();
 
-    // Uptime Calculation
     const uptimeSeconds = process.uptime();
     const days = Math.floor(uptimeSeconds / 86400);
     const hours = Math.floor((uptimeSeconds % 86400) / 3600);
@@ -26,7 +24,6 @@ module.exports = {
 
     const formattedUptime = `${days} দিন, ${hours} ঘণ্টা, ${minutes} মিনিট, ${seconds} সেকেন্ড`;
 
-    // Memory Calculation
     const memoryUsage = process.memoryUsage();
     const heapUsed = (memoryUsage.heapUsed / 1024 / 1024).toFixed(2);
     const heapTotal = (memoryUsage.heapTotal / 1024 / 1024).toFixed(2);
@@ -35,7 +32,6 @@ module.exports = {
     const freeMem = (os.freemem() / 1024 / 1024 / 1024).toFixed(2);
     const usedMem = (totalMem - freeMem).toFixed(2);
 
-    // CPU & OS Details
     const endPing = Date.now() - startPing;
     const cpuLoad = os.loadavg()[0].toFixed(2);
     const cpuCores = os.cpus().length;
