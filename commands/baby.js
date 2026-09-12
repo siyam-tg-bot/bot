@@ -12,11 +12,11 @@ const randomStickerReplies = [
   "উম্মাহ! 😘 কি সুন্দর স্টিকার!",
   "স্টিকার না দিয়ে একটু ভালোবেসে কথা বলো তো! 💖",
   "বেশি স্টিকার মারলে কিন্তু কামড় দিমু 🤭",
-  "বসের দেওয়া বট আমি, স্টিকার দেখে প্রেমে পড়ে গেলাম তো! 🫣"
+  "বসের দেওয়া বট আমি, প্রেমে পড়ে গেলাম তো! 🫣"
 ];
 
 const randomNoPrefixReplies = [
-  "বাবু খুদা লাকছে🥺",
+  "বাবু ক্ষুধা লাগছে🥺",
   "Hop beda😾, Boss বল boss😼",
   "আমাকে ডাকলে ,আমি কিন্তূ কিস করে দেবো😘",
   "গোলাপ ফুল এর জায়গায় আমি দিলাম তোমায় মেসেজ 🌸",
@@ -58,17 +58,28 @@ function filterText(text) {
   return cleanText;
 }
 
+async function getAiResponse(userText) {
+  try {
+    const baseUrl = await baseApiUrl();
+    const res = await axios.post(`${baseUrl}/api/hinata`, { text: userText, style: 3 }, { timeout: 10000 });
+    let reply = res.data ? res.data.message : "error baby🥹";
+    return filterText(reply);
+  } catch (e) {
+    return randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
+  }
+}
+
 module.exports = {
   config: {
     name: "bby",
     aliases: ["baby", "jan", "janu", "wifey", "bot", "hinata", "hina"],
-    version: "2.5-PRO",
+    version: "3.0-ULTRA",
     author: AUTHOR,
     role: 0,
     shortDescription: "Always Active AI Baby Chatbot",
-    longDescription: "Fast 100% active AI chatbot supporting stickers, no-prefix chat, and auto reply system",
+    longDescription: "Fast 100% active AI chatbot with no-prefix and auto-reply support",
     category: "chat",
-    guide: "{pn} [text] | reply to message/sticker | teach [msg] - [reply]"
+    guide: "{pn} [text] | reply to message/sticker"
   },
 
   onStart: async function ({ bot, msg, args }) {
@@ -81,86 +92,23 @@ module.exports = {
       });
     }
 
-    if (msg.sticker || (msg.reply_to_message && msg.reply_to_message.sticker && (!args || args.length === 0))) {
+    if (msg.sticker) {
       const reply = randomStickerReplies[Math.floor(Math.random() * randomStickerReplies.length)];
       return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
     }
 
     let userText = args ? args.join(" ").trim() : "";
-
     if (!userText && msg.reply_to_message && msg.reply_to_message.text) {
       userText = msg.reply_to_message.text;
     }
 
     if (!userText) {
-      const ran = [
-        "Bolo baby, কি বলবা? 😚",
-        "I love you baby ❤️",
-        "আমাকে ডাকলে কিন্তু কিস করে দেবো 😘",
-        "হঠাৎ আমাকে মনে পড়লো? 🙄"
-      ];
-      return bot.sendMessage(chatId, ran[Math.floor(Math.random() * ran.length)], {
-        reply_to_message_id: messageId
-      });
+      const ran = ["Bolo baby, কি বলবা? 😚", "I love you baby ❤️", "আমাকে ডাকলে কিন্তু কিস করে দেবো 😘"];
+      return bot.sendMessage(chatId, ran[Math.floor(Math.random() * ran.length)], { reply_to_message_id: messageId });
     }
 
-    const lowerText = userText.toLowerCase();
-
-    if (lowerText.startsWith("teach ")) {
-      const mahmudStr = userText.substring(6);
-      const [trigger, ...responsesArr] = mahmudStr.split(" - ");
-      const responses = responsesArr.join(" - ");
-      if (!trigger || !responses) {
-        return bot.sendMessage(chatId, "❌ | Format: ,bby teach [question] - [reply1, reply2]", {
-          reply_to_message_id: messageId
-        });
-      }
-      try {
-        const baseUrl = await baseApiUrl();
-        await axios.post(`${baseUrl}/api/jan/teach`, { trigger, responses, userID: msg.from.id });
-        return bot.sendMessage(chatId, `✅ Reply added to "${trigger.trim()}"`, { reply_to_message_id: messageId });
-      } catch (e) {
-        return bot.sendMessage(chatId, "⚠️ Teach error, try again later.", { reply_to_message_id: messageId });
-      }
-    }
-
-    if (lowerText.startsWith("remove ") || lowerText.startsWith("rm ")) {
-      const mahmudStr = userText.replace(/^remove\s+|^rm\s+/i, "");
-      const [trigger, index] = mahmudStr.split(" - ");
-      if (!trigger || !index || isNaN(index)) {
-        return bot.sendMessage(chatId, "❌ | Usage: ,bby remove [question] - [index]", { reply_to_message_id: messageId });
-      }
-      try {
-        const baseUrl = await baseApiUrl();
-        const response = await axios.delete(`${baseUrl}/api/jan/remove`, {
-          data: { trigger, index: parseInt(index, 10) }
-        });
-        return bot.sendMessage(chatId, response.data.message || "Removed successfully!", { reply_to_message_id: messageId });
-      } catch (e) {
-        return bot.sendMessage(chatId, "⚠️ Error removing word.", { reply_to_message_id: messageId });
-      }
-    }
-
-    if (lowerText.startsWith("list")) {
-      try {
-        const baseUrl = await baseApiUrl();
-        const endpoint = lowerText.includes("all") ? "/list/all" : "/list";
-        const response = await axios.get(`${baseUrl}/api/jan${endpoint}`);
-        return bot.sendMessage(chatId, response.data.message || "List empty.", { reply_to_message_id: messageId });
-      } catch (e) {
-        return bot.sendMessage(chatId, "⚠️ Error fetching list.", { reply_to_message_id: messageId });
-      }
-    }
-
-    try {
-      const baseUrl = await baseApiUrl();
-      const res = await axios.post(`${baseUrl}/api/hinata`, { text: userText, style: 3 }, { timeout: 12000 });
-      let botReply = res.data ? res.data.message : "error baby🥹";
-      botReply = filterText(botReply);
-      return bot.sendMessage(chatId, botReply, { reply_to_message_id: messageId });
-    } catch (err) {
-      return bot.sendMessage(chatId, "আরে বলো আমার জান, কেমন আছো? 😚", { reply_to_message_id: messageId });
-    }
+    const replyMsg = await getAiResponse(userText);
+    return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
   },
 
   onChat: async function ({ bot, msg }) {
@@ -168,47 +116,57 @@ module.exports = {
 
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
+    const text = (msg.text || msg.caption || "").toLowerCase().trim();
 
-    if (msg.sticker) {
-      const isReplyToBot = msg.reply_to_message && msg.reply_to_message.from && msg.reply_to_message.from.is_bot;
-      if (isReplyToBot) {
+    // ১. বটের পাঠানো মেসেজে রিপ্লাই দেওয়া হলে (Reply to Bot)
+    const isReplyToBot = msg.reply_to_message && msg.reply_to_message.from && msg.reply_to_message.from.is_bot;
+
+    if (isReplyToBot) {
+      if (msg.sticker) {
         const reply = randomStickerReplies[Math.floor(Math.random() * randomStickerReplies.length)];
         return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
       }
-      return;
+
+      if (text) {
+        const replyMsg = await getAiResponse(text);
+        return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
+      }
     }
 
-    const text = (msg.text || msg.caption || "").toLowerCase().trim();
-    if (!text) return;
-
-    const hasTrigger = mahmud.some(word => text.startsWith(word) || text === word);
-
-    if (hasTrigger) {
-      const words = text.split(/\s+/);
-      if (words.length === 1) {
-        const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
-        return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
-      }
-
-      let cleanQuery = text;
-      for (const prefix of mahmud) {
-        if (cleanQuery.startsWith(prefix)) {
-          cleanQuery = cleanQuery.substring(prefix.length).trim();
-          break;
+    // ২. প্রিফিক্স ছাড়া ট্রিগার ওয়ার্ড দিয়ে ডাকলে (No-Prefix Trigger)
+    if (text) {
+      const hasTrigger = mahmud.some(word => text.startsWith(word) || text === word);
+      if (hasTrigger) {
+        const words = text.split(/\s+/);
+        if (words.length === 1) {
+          const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
+          return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
         }
-      }
-      if (!cleanQuery) cleanQuery = text;
 
-      try {
-        const baseUrl = await baseApiUrl();
-        const res = await axios.post(`${baseUrl}/api/hinata`, { text: cleanQuery, style: 3 }, { timeout: 10000 });
-        let botReply = res.data ? res.data.message : "error baby🥹";
-        botReply = filterText(botReply);
-        return bot.sendMessage(chatId, botReply, { reply_to_message_id: messageId });
-      } catch (e) {
-        const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
-        return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
+        let cleanQuery = text;
+        for (const prefix of mahmud) {
+          if (cleanQuery.startsWith(prefix)) {
+            cleanQuery = cleanQuery.substring(prefix.length).trim();
+            break;
+          }
+        }
+        if (!cleanQuery) cleanQuery = text;
+
+        const replyMsg = await getAiResponse(cleanQuery);
+        return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
       }
+    }
+  },
+
+  onReply: async function ({ bot, msg }) {
+    if (!msg || this.config.author !== AUTHOR) return;
+    const chatId = msg.chat.id;
+    const messageId = msg.message_id;
+    const text = (msg.text || msg.caption || "").trim();
+
+    if (text) {
+      const replyMsg = await getAiResponse(text);
+      return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
     }
   }
 };
