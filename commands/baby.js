@@ -58,11 +58,12 @@ function filterText(text) {
   return cleanText;
 }
 
-async function getAiResponse(userText) {
+async function fetchAiReply(userText) {
   try {
     const baseUrl = await baseApiUrl();
     const res = await axios.post(`${baseUrl}/api/hinata`, { text: userText, style: 3 }, { timeout: 10000 });
-    let reply = res.data ? res.data.message : "error baby🥹";
+    let reply = res.data ? res.data.message : null;
+    if (!reply) throw new Error("Empty reply");
     return filterText(reply);
   } catch (e) {
     return randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
@@ -73,7 +74,7 @@ module.exports = {
   config: {
     name: "bby",
     aliases: ["baby", "jan", "janu", "wifey", "bot", "hinata", "hina"],
-    version: "3.0-ULTRA",
+    version: "4.0-FINAL",
     author: AUTHOR,
     role: 0,
     shortDescription: "Always Active AI Baby Chatbot",
@@ -87,9 +88,7 @@ module.exports = {
     const messageId = msg.message_id;
 
     if (this.config.author !== AUTHOR) {
-      return bot.sendMessage(chatId, "⚠️ Author name changed! Command locked.", {
-        reply_to_message_id: messageId
-      });
+      return bot.sendMessage(chatId, "⚠️ Author name changed! Command locked.", { reply_to_message_id: messageId });
     }
 
     if (msg.sticker) {
@@ -107,7 +106,7 @@ module.exports = {
       return bot.sendMessage(chatId, ran[Math.floor(Math.random() * ran.length)], { reply_to_message_id: messageId });
     }
 
-    const replyMsg = await getAiResponse(userText);
+    const replyMsg = await fetchAiReply(userText);
     return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
   },
 
@@ -116,10 +115,9 @@ module.exports = {
 
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    const text = (msg.text || msg.caption || "").toLowerCase().trim();
 
-    // ১. বটের পাঠানো মেসেজে রিপ্লাই দেওয়া হলে (Reply to Bot)
-    const isReplyToBot = msg.reply_to_message && msg.reply_to_message.from && msg.reply_to_message.from.is_bot;
+    // ১. বটের মেসেজে রিপ্লাই করলে (Reply to Bot)
+    const isReplyToBot = msg.reply_to_message && msg.reply_to_message.from && (msg.reply_to_message.from.is_bot || msg.reply_to_message.from.id === bot.botId);
 
     if (isReplyToBot) {
       if (msg.sticker) {
@@ -127,34 +125,32 @@ module.exports = {
         return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
       }
 
-      if (text) {
-        const replyMsg = await getAiResponse(text);
+      const input = (msg.text || msg.caption || "").trim();
+      if (input) {
+        const replyMsg = await fetchAiReply(input);
         return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
       }
     }
 
-    // ২. প্রিফিক্স ছাড়া ট্রিগার ওয়ার্ড দিয়ে ডাকলে (No-Prefix Trigger)
-    if (text) {
-      const hasTrigger = mahmud.some(word => text.startsWith(word) || text === word);
-      if (hasTrigger) {
-        const words = text.split(/\s+/);
-        if (words.length === 1) {
-          const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
-          return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
-        }
+    // ২. প্রিফিক্স ছাড়া সাধারণ মেসেজে ট্রিগার হলে (No-Prefix Trigger)
+    const text = (msg.text || msg.caption || "").toLowerCase().trim();
+    if (!text) return;
 
-        let cleanQuery = text;
-        for (const prefix of mahmud) {
-          if (cleanQuery.startsWith(prefix)) {
-            cleanQuery = cleanQuery.substring(prefix.length).trim();
-            break;
-          }
-        }
-        if (!cleanQuery) cleanQuery = text;
+    const matchedTrigger = mahmud.find(word => text.startsWith(word) || text === word);
 
-        const replyMsg = await getAiResponse(cleanQuery);
-        return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
+    if (matchedTrigger) {
+      const words = text.split(/\s+/);
+
+      if (words.length === 1) {
+        const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
+        return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
       }
+
+      let cleanQuery = text.substring(matchedTrigger.length).trim();
+      if (!cleanQuery) cleanQuery = text;
+
+      const replyMsg = await fetchAiReply(cleanQuery);
+      return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
     }
   },
 
@@ -162,10 +158,15 @@ module.exports = {
     if (!msg || this.config.author !== AUTHOR) return;
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    const text = (msg.text || msg.caption || "").trim();
+    
+    if (msg.sticker) {
+      const reply = randomStickerReplies[Math.floor(Math.random() * randomStickerReplies.length)];
+      return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
+    }
 
-    if (text) {
-      const replyMsg = await getAiResponse(text);
+    const input = (msg.text || msg.caption || "").trim();
+    if (input) {
+      const replyMsg = await fetchAiReply(input);
       return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
     }
   }
