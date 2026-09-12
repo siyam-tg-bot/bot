@@ -53,13 +53,11 @@ module.exports = {
             url: item.url || `https://www.youtube.com/watch?v=${item.id}`
           };
         }
-
         if (video) return video;
       } catch (e) {
         continue;
       }
     }
-
     return null;
   },
 
@@ -79,12 +77,7 @@ module.exports = {
         return res.data?.mp4 || res.data?.downloadUrl || res.data?.video;
       },
       async () => {
-        const res = await axios.post(`https://api.cobalt.tools/api/json`, {
-          url: videoUrl
-        }, {
-          headers: { "Accept": "application/json", "Content-Type": "application/json" },
-          timeout: 15000
-        });
+        const res = await axios.post(`https://api.cobalt.tools/api/json`, { url: videoUrl }, { headers: { "Accept": "application/json", "Content-Type": "application/json" }, timeout: 15000 });
         return res.data?.url;
       },
       async () => {
@@ -101,14 +94,13 @@ module.exports = {
         continue;
       }
     }
-
     return null;
   },
 
-  execute: async (bot, msg, argsText) => {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    const query = Array.isArray(argsText) ? argsText.join(" ").trim() : (argsText ? argsText.trim() : "");
+    const query = args.join(" ").trim(); 
 
     const replyMarkup = {
       inline_keyboard: [
@@ -120,65 +112,29 @@ module.exports = {
     };
 
     if (!query) {
-      return bot.sendMessage(
-        chatId,
-        "❌ Please provide a song/video name.\n📌 Example: /video Let Me Love You",
-        { 
-          reply_to_message_id: messageId,
-          reply_markup: replyMarkup
-        }
-      );
+      return bot.sendMessage(chatId, "❌ Please provide a song/video name.\n📌 Example: /video Let Me Love You", { reply_to_message_id: messageId, reply_markup: replyMarkup });
     }
 
-    const searchingMsg = await bot.sendMessage(
-      chatId,
-      `🔍 Searching...\n━━━━━━━━━━━━━━━\n📌 Query: ${query}\n⏳ Please wait...`,
-      { reply_to_message_id: messageId }
-    );
+    const searchingMsg = await bot.sendMessage(chatId, `🔍 Searching...\n━━━━━━━━━━━━━━━\n📌 Query: ${query}\n⏳ Please wait...`, { reply_to_message_id: messageId });
 
     try {
       const video = await module.exports.searchVideo(query);
-
       if (!video || !video.url) throw new Error("No results found from all search APIs.");
 
-      await bot.editMessageText(
-        `🎬 Video Found\n━━━━━━━━━━━━━━━\n📖 Title: ${video.title}\n⬇️ Downloading...`,
-        { chat_id: chatId, message_id: searchingMsg.message_id }
-      );
+      await bot.editMessageText(`🎬 Video Found\n━━━━━━━━━━━━━━━\n📖 Title: ${video.title}\n⬇️ Downloading...`, { chat_id: chatId, message_id: searchingMsg.message_id });
 
       const downloadUrl = await module.exports.getDownloadUrl(video);
-
       if (!downloadUrl) throw new Error("Download link not available currently.");
 
-      try {
-        await bot.deleteMessage(chatId, searchingMsg.message_id);
-      } catch (e) {}
+      try { await bot.deleteMessage(chatId, searchingMsg.message_id); } catch (e) {}
 
-      const caption =
-`━━━━━━━━━━━━━━━━━━
-🎬 VIDEO READY
-━━━━━━━━━━━━━━━━━━
-📖 Title: ${video.title}
-⏱ Duration: ${video.time || "N/A"}
-🖌️ 𝐏𝐎𝐖𝐄𝐑 𝐁𝐘: ${AUTHOR}
-━━━━━━━━━━━━━━━━━━`;
+      const caption = `━━━━━━━━━━━━━━━━━━\n🎬 VIDEO READY\n━━━━━━━━━━━━━━━━━━\n📖 Title: ${video.title}\n⏱ Duration: ${video.time || "N/A"}\n🖌️ 𝐏𝐎𝐖𝐄𝐑 𝐁𝐘: ${AUTHOR}\n━━━━━━━━━━━━━━━━━━`;
 
-      await bot.sendVideo(chatId, downloadUrl, {
-        caption: caption,
-        reply_to_message_id: messageId,
-        reply_markup: replyMarkup
-      });
+      await bot.sendVideo(chatId, downloadUrl, { caption: caption, reply_to_message_id: messageId, reply_markup: replyMarkup });
 
     } catch (err) {
       console.error("Video Downloader Error:", err.message);
-      await bot.editMessageText(
-        `❌ Failed\n━━━━━━━━━━━━━━━\n${err.message || "An unexpected error occurred."}`,
-        { 
-          chat_id: chatId, 
-          message_id: searchingMsg.message_id,
-          reply_markup: replyMarkup
-        }
-      );
+      await bot.editMessageText(`❌ Failed\n━━━━━━━━━━━━━━━\n${err.message || "An unexpected error occurred."}`, { chat_id: chatId, message_id: searchingMsg.message_id, reply_markup: replyMarkup });
     }
   }
 };
