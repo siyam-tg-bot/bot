@@ -6,7 +6,7 @@ const { createCanvas, loadImage } = require("canvas");
 module.exports = {
   config: {
     name: "goru",
-    version: "2.4",
+    version: "2.5",
     author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
     countDown: 5,
     role: 0,
@@ -27,16 +27,18 @@ module.exports = {
       targetName = msg.reply_to_message.from.first_name || "Someone";
     }
 
+    let waitMsg;
     try {
-      const waitMsg = await bot.sendMessage(chatId, "⌛️ Wait kor...", { reply_to_message_id: messageId });
+      waitMsg = await bot.sendMessage(chatId, "⌛️ Wait kor...", { reply_to_message_id: messageId });
 
       const fetchAvatar = async (uid) => {
         try {
           const userPhotos = await bot.getUserProfilePhotos(uid, { limit: 1 });
-          if (userPhotos && userPhotos.total_count > 0) {
+          if (userPhotos && userPhotos.total_count > 0 && userPhotos.photos[0][0]) {
             const fileId = userPhotos.photos[0][0].file_id;
-            const fileLink = await bot.getFileLink(fileId);
-            if (fileLink) {
+            const file = await bot.getFile(fileId);
+            if (file && file.file_path) {
+              const fileLink = `https://api.telegram.org/file/bot${bot.token}/${file.file_path}`;
               const response = await axios.get(fileLink, {
                 responseType: "arraybuffer",
                 timeout: 15000
@@ -44,13 +46,13 @@ module.exports = {
               return Buffer.from(response.data);
             }
           }
-          throw new Error("No profile photo");
-        } catch (error) {
-          const fallbackRes = await axios.get("https://i.imgur.com/74d53Qy.png", {
-            responseType: "arraybuffer"
-          });
-          return Buffer.from(fallbackRes.data);
-        }
+        } catch (e) {}
+
+        const fallbackRes = await axios.get("https://i.imgur.com/74d53Qy.png", {
+          responseType: "arraybuffer",
+          timeout: 15000
+        });
+        return Buffer.from(fallbackRes.data);
       };
 
       const cacheDir = path.join(__dirname, "goru_cache");
@@ -118,20 +120,25 @@ module.exports = {
       const buffer = canvas.toBuffer("image/png");
       await fs.writeFile(outputPath, buffer);
 
-      await bot.sendPhoto(chatId, outputPath, {
-        caption: `🤣😹\n${targetName} একদম আসল গরু হয়েছে বিদেশী গরু! 🐮✨ আরো কর বস সিয়াম এর সাথে বিয়াদবি😴`,
-        reply_to_message_id: messageId
-      });
-
       if (waitMsg && waitMsg.message_id) {
         try {
           await bot.deleteMessage(chatId, waitMsg.message_id);
         } catch {}
       }
 
+      await bot.sendPhoto(chatId, outputPath, {
+        caption: `🤣😹\n${targetName} একদম আসল গরু হয়েছে বিদেশী গরু! 🐮✨ আরো কর বস সিয়াম এর সাথে বিয়াদবি😴`,
+        reply_to_message_id: messageId
+      });
+
       setTimeout(() => fs.unlink(outputPath).catch(() => {}), 5000);
     } catch (err) {
       console.error("❌ Goru Command Error:", err);
+      if (waitMsg && waitMsg.message_id) {
+        try {
+          await bot.deleteMessage(chatId, waitMsg.message_id);
+        } catch {}
+      }
       return bot.sendMessage(chatId, "⚠️ something wrong, trying again 🙂", { reply_to_message_id: messageId });
     }
   }
