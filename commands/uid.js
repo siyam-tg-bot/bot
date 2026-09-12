@@ -1,18 +1,4 @@
-const config = require("../config");
-
 module.exports = {
-  config: {
-    name: "uid",
-    aliases: ["id", "userinfo"],
-    version: "1.0.1",
-    author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-    role: 0,
-    category: "info",
-    shortDescription: "Get user Telegram ID",
-    longDescription: "Sends user ID and basic info cleanly.",
-    guide: "/uid"
-  },
-
   name: "uid",
   aliases: ["id", "userinfo"],
   version: "1.0.1",
@@ -23,7 +9,7 @@ module.exports = {
   longDescription: "Sends user ID and basic info cleanly.",
   guide: "/uid",
 
-  execute: async (bot, msg) => {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
 
