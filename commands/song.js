@@ -1,473 +1,146 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-
-const TEMP = path.join(process.cwd(), "temp_songs");
-const MAX = 49 * 1024 * 1024;
-
-if (!fs.existsSync(TEMP)) {
-  fs.mkdirSync(TEMP, { recursive: true });
-}
 
 module.exports = {
   name: "song",
-  aliases: ["music", "sing", "audio"],
-  version: "6.0.0",
-  author: "SIYAM HASAN",
+  aliases: ["music", "sing", "audio", "play"],
+  version: "2.5",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
-  shortDescription: "Download songs",
-  longDescription: "Search and download songs",
+  shortDescription: "Download and play song as voice message",
+  longDescription: "Searches for any song across multiple servers and sends it as a Telegram voice message",
   category: "utility",
   guide: "{pn} <song name>",
 
   execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
-    const replyId = msg.message_id;
+    const messageId = msg.message_id;
 
-    if (!args || !args.length) {
+    if (!args || args.length === 0) {
       return bot.sendMessage(
         chatId,
-        "<b>❌ PLEASE ENTER A SONG NAME</b>\n\n<b>EXAMPLE: /song faded</b>",
-        {
-          reply_to_message_id: replyId,
-          parse_mode: "HTML"
-        }
+        "❌ **অনুগ্রহ করে গানের নাম বা কিওয়ার্ড লিখুন!**\nউদাহরণ: `,song faded`",
+        { reply_to_message_id: messageId, parse_mode: "Markdown" }
       );
     }
 
-    const query = args.join(" ").trim();
-    const id = Date.now() + "_" + Math.random().toString(36).slice(2);
-    let loading;
+    const query = args.join(" ");
+    let loadingMsg = null;
 
     try {
-      loading = await bot.sendMessage(
+      loadingMsg = await bot.sendMessage(
         chatId,
-        "<b>🔎 SEARCHING SONG</b>\n\n<b>🎵 " + html(query) + "</b>",
-        {
-          reply_to_message_id: replyId,
-          parse_mode: "HTML"
+        `🔍 **"${query}"** গানটি প্রসেস করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...`,
+        { reply_to_message_id: messageId, parse_mode: "Markdown" }
+      );
+
+      let videoUrl = null;
+      let songTitle = query;
+
+      try {
+        const sRes1 = await axios.get(`https://api.vreden.web.id/api/ytsearch?query=${encodeURIComponent(query)}`);
+        if (sRes1.data && sRes1.data.result && sRes1.data.result.length > 0) {
+          videoUrl = sRes1.data.result[0].url;
+          songTitle = sRes1.data.result[0].title || query;
         }
-      );
+      } catch (e) {}
 
-      let result = await downloadSong(query, id);
-
-      if (!result) {
-        throw new Error("DOWNLOAD SOURCE UNAVAILABLE");
+      if (!videoUrl) {
+        try {
+          const sRes2 = await axios.get(`https://api.davidcyriltech.my.id/search/yt?q=${encodeURIComponent(query)}`);
+          if (sRes2.data && sRes2.data.results && sRes2.data.results.length > 0) {
+            videoUrl = sRes2.data.results[0].url;
+            songTitle = sRes2.data.results[0].title || query;
+          }
+        } catch (e) {}
       }
 
-      await edit(bot, chatId, loading, "<b>🎧 PROCESSING SONG</b>");
-
-      const audio = await convert(result.file, id);
-
-      if (!audio) {
-        throw new Error("AUDIO PROCESSING FAILED");
+      if (!videoUrl) {
+        try {
+          const sRes3 = await axios.get(`https://api.agatz.xyz/api/ytsearch?q=${encodeURIComponent(query)}`);
+          if (sRes3.data && sRes3.data.data && sRes3.data.data.length > 0) {
+            videoUrl = sRes3.data.data[0].url;
+            songTitle = sRes3.data.data[0].title || query;
+          }
+        } catch (e) {}
       }
 
-      await edit(
-        bot,
-        chatId,
-        loading,
-        "<b>📤 UPLOADING SONG</b>\n\n<b>🎵 " +
-          html(result.title) +
-          "</b>"
-      );
-
-      if (audio.type === "voice") {
-        await bot.sendVoice(chatId, fs.createReadStream(audio.file), {
-          reply_to_message_id: replyId,
-          caption:
-            "<b>🎧 " +
-            html(result.title) +
-            "</b>\n\n<b>SIYAM HASAN NIZHUM CHAT BOT</b>",
-          parse_mode: "HTML"
-        });
-      } else {
-        await bot.sendAudio(chatId, fs.createReadStream(audio.file), {
-          reply_to_message_id: replyId,
-          title: result.title,
-          performer: "SIYAM HASAN",
-          caption:
-            "<b>🎧 " +
-            html(result.title) +
-            "</b>\n\n<b>SIYAM HASAN NIZHUM CHAT BOT</b>",
-          parse_mode: "HTML"
-        });
+      if (!videoUrl) {
+        videoUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(query)}`;
       }
 
-      await remove(bot, chatId, loading);
-    } catch (e) {
-      console.error("SONG ERROR:", e);
+      let audioUrl = null;
 
-      await remove(bot, chatId, loading);
-
-      await bot.sendMessage(
-        chatId,
-        "<b>❌ SONG DOWNLOAD FAILED</b>\n\n<b>🎵 " +
-          html(query) +
-          "</b>\n\n<b>⚠️ " +
-          html(e.message || "UNKNOWN ERROR") +
-          "</b>",
-        {
-          reply_to_message_id: replyId,
-          parse_mode: "HTML"
+      try {
+        const dRes1 = await axios.get(`https://api.vreden.web.id/api/ytmp3?url=${encodeURIComponent(videoUrl)}`);
+        if (dRes1.data && dRes1.data.result && dRes1.data.result.download && dRes1.data.result.download.url) {
+          audioUrl = dRes1.data.result.download.url;
         }
+      } catch (e) {}
+
+      if (!audioUrl) {
+        try {
+          const dRes2 = await axios.get(`https://api.davidcyriltech.my.id/download/ytmp3?url=${encodeURIComponent(videoUrl)}`);
+          if (dRes2.data && dRes2.data.result && dRes2.data.result.download_url) {
+            audioUrl = dRes2.data.result.download_url;
+          }
+        } catch (e) {}
+      }
+
+      if (!audioUrl) {
+        try {
+          const dRes3 = await axios.get(`https://api.dreaded.site/api/ytdl/audio?url=${encodeURIComponent(videoUrl)}`);
+          if (dRes3.data && dRes3.data.result && dRes3.data.result.download) {
+            audioUrl = dRes3.data.result.download;
+          }
+        } catch (e) {}
+      }
+
+      if (!audioUrl) {
+        try {
+          const dRes4 = await axios.get(`https://api.agatz.xyz/api/ytmp3?url=${encodeURIComponent(videoUrl)}`);
+          if (dRes4.data && dRes4.data.data && dRes4.data.data.downloadUrl) {
+            audioUrl = dRes4.data.data.downloadUrl;
+          }
+        } catch (e) {}
+      }
+
+      if (!audioUrl) {
+        if (loadingMsg) {
+          await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+        }
+        return bot.sendMessage(
+          chatId,
+          `❌ **"${query}"** গানটি সার্ভার থেকে আনা সম্ভব হয়নি। অনুগ্রহ করে অন্য নাম দিয়ে চেষ্টা করুন।`,
+          { reply_to_message_id: messageId, parse_mode: "Markdown" }
+        );
+      }
+
+      try {
+        await bot.sendVoice(chatId, audioUrl, {
+          reply_to_message_id: messageId,
+          caption: `🎧 **${songTitle}**`
+        });
+      } catch (voiceErr) {
+        await bot.sendAudio(chatId, audioUrl, {
+          reply_to_message_id: messageId,
+          title: songTitle,
+          caption: `🎧 **${songTitle}**`
+        });
+      }
+
+      if (loadingMsg) {
+        await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+      }
+
+    } catch (error) {
+      if (loadingMsg) {
+        await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+      }
+      return bot.sendMessage(
+        chatId,
+        `❌ **গানটি পাঠাতে সমস্যা হয়েছে!**\nত্রুটি: ${error.message}`,
+        { reply_to_message_id: messageId, parse_mode: "Markdown" }
       );
-    } finally {
-      cleanup(id);
     }
   }
 };
-
-async function downloadSong(query, id) {
-  const sources = [
-    () => david(query, id),
-    () => agatz(query, id),
-    () => dreaded(query, id)
-  ];
-
-  for (const source of sources) {
-    try {
-      const result = await source();
-
-      if (result && result.file) {
-        return result;
-      }
-    } catch (e) {
-      console.log("SOURCE FAILED:", e.message);
-    }
-  }
-
-  return null;
-}
-
-async function david(query, id) {
-  const search = await axios.get(
-    "https://api.davidcyriltech.my.id/search/yt",
-    {
-      params: { q: query },
-      timeout: 30000
-    }
-  );
-
-  const results = search.data && search.data.results;
-
-  if (!Array.isArray(results) || !results.length) {
-    return null;
-  }
-
-  for (const item of results.slice(0, 3)) {
-    if (!item.url) continue;
-
-    try {
-      const r = await axios.get(
-        "https://api.davidcyriltech.my.id/download/ytmp3",
-        {
-          params: { url: item.url },
-          timeout: 60000
-        }
-      );
-
-      const url =
-        r.data &&
-        r.data.result &&
-        r.data.result.download_url;
-
-      if (!url) continue;
-
-      const file = await saveUrl(url, id + "_david");
-
-      if (file) {
-        return {
-          file,
-          title: item.title || query
-        };
-      }
-    } catch (e) {}
-  }
-
-  return null;
-}
-
-async function agatz(query, id) {
-  const search = await axios.get(
-    "https://api.davidcyriltech.my.id/search/yt",
-    {
-      params: { q: query },
-      timeout: 30000
-    }
-  );
-
-  const results = search.data && search.data.results;
-
-  if (!Array.isArray(results) || !results.length) {
-    return null;
-  }
-
-  for (const item of results.slice(0, 3)) {
-    if (!item.url) continue;
-
-    try {
-      const r = await axios.get(
-        "https://api.agatz.xyz/api/ytmp3",
-        {
-          params: { url: item.url },
-          timeout: 60000
-        }
-      );
-
-      const url =
-        r.data &&
-        r.data.data &&
-        r.data.data.downloadUrl;
-
-      if (!url) continue;
-
-      const file = await saveUrl(url, id + "_agatz");
-
-      if (file) {
-        return {
-          file,
-          title: item.title || query
-        };
-      }
-    } catch (e) {}
-  }
-
-  return null;
-}
-
-async function dreaded(query, id) {
-  const search = await axios.get(
-    "https://api.davidcyriltech.my.id/search/yt",
-    {
-      params: { q: query },
-      timeout: 30000
-    }
-  );
-
-  const results = search.data && search.data.results;
-
-  if (!Array.isArray(results) || !results.length) {
-    return null;
-  }
-
-  for (const item of results.slice(0, 3)) {
-    if (!item.url) continue;
-
-    try {
-      const r = await axios.get(
-        "https://api.dreaded.site/api/ytdl/audio",
-        {
-          params: { url: item.url },
-          timeout: 60000
-        }
-      );
-
-      const url =
-        r.data &&
-        r.data.result &&
-        r.data.result.download;
-
-      if (!url) continue;
-
-      const file = await saveUrl(url, id + "_dreaded");
-
-      if (file) {
-        return {
-          file,
-          title: item.title || query
-        };
-      }
-    } catch (e) {}
-  }
-
-  return null;
-}
-
-async function saveUrl(url, name) {
-  const file = path.join(TEMP, name + ".mp3");
-
-  try {
-    const response = await axios.get(url, {
-      responseType: "stream",
-      timeout: 180000,
-      maxContentLength: MAX,
-      maxBodyLength: MAX,
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
-    });
-
-    const writer = fs.createWriteStream(file);
-    let size = 0;
-
-    return await new Promise((resolve, reject) => {
-      response.data.on("data", chunk => {
-        size += chunk.length;
-
-        if (size > MAX) {
-          response.data.destroy();
-          writer.destroy();
-          safeDelete(file);
-          reject(new Error("FILE TOO LARGE"));
-        }
-      });
-
-      response.data.on("error", error => {
-        writer.destroy();
-        safeDelete(file);
-        reject(error);
-      });
-
-      writer.on("finish", () => {
-        if (!fs.existsSync(file)) {
-          return reject(new Error("DOWNLOAD FAILED"));
-        }
-
-        if (fs.statSync(file).size > MAX) {
-          safeDelete(file);
-          return reject(new Error("FILE TOO LARGE"));
-        }
-
-        resolve(file);
-      });
-
-      writer.on("error", error => {
-        safeDelete(file);
-        reject(error);
-      });
-
-      response.data.pipe(writer);
-    });
-  } catch (e) {
-    safeDelete(file);
-    return null;
-  }
-}
-
-async function convert(input, id) {
-  const ffmpeg = require("child_process").execFile;
-  const voice = path.join(TEMP, id + "_voice.ogg");
-  const mp3 = path.join(TEMP, id + "_final.mp3");
-
-  try {
-    await run(ffmpeg, "ffmpeg", [
-      "-y",
-      "-i",
-      input,
-      "-vn",
-      "-map_metadata",
-      "-1",
-      "-c:a",
-      "libopus",
-      "-b:a",
-      "48k",
-      voice
-    ]);
-
-    if (fs.existsSync(voice) && fs.statSync(voice).size <= MAX) {
-      return {
-        file: voice,
-        type: "voice"
-      };
-    }
-  } catch (e) {
-    console.log("VOICE FAILED:", e.message);
-  }
-
-  try {
-    await run(ffmpeg, "ffmpeg", [
-      "-y",
-      "-i",
-      input,
-      "-vn",
-      "-map_metadata",
-      "-1",
-      "-c:a",
-      "libmp3lame",
-      "-b:a",
-      "96k",
-      mp3
-    ]);
-
-    if (fs.existsSync(mp3) && fs.statSync(mp3).size <= MAX) {
-      return {
-        file: mp3,
-        type: "audio"
-      };
-    }
-  } catch (e) {
-    console.log("MP3 FAILED:", e.message);
-  }
-
-  return null;
-}
-
-function run(execFile, command, args) {
-  return new Promise((resolve, reject) => {
-    execFile(
-      command,
-      args,
-      {
-        timeout: 180000,
-        maxBuffer: 20 * 1024 * 1024
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve({ stdout, stderr });
-        }
-      }
-    );
-  });
-}
-
-function cleanup(id) {
-  try {
-    for (const file of fs.readdirSync(TEMP)) {
-      if (file.startsWith(id)) {
-        safeDelete(path.join(TEMP, file));
-      }
-    }
-  } catch (e) {}
-}
-
-function safeDelete(file) {
-  try {
-    if (file && fs.existsSync(file)) {
-      fs.unlinkSync(file);
-    }
-  } catch (e) {}
-}
-
-async function edit(bot, chatId, message, text) {
-  if (!message) return;
-
-  try {
-    await bot.editMessageText(text, {
-      chat_id: chatId,
-      message_id: message.message_id,
-      parse_mode: "HTML"
-    });
-  } catch (e) {}
-}
-
-async function remove(bot, chatId, message) {
-  if (!message) return;
-
-  try {
-    await bot.deleteMessage(
-      chatId,
-      message.message_id
-    );
-  } catch (e) {}
-}
-
-function html(text) {
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
