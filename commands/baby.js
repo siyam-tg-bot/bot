@@ -23,7 +23,7 @@ const baseApiUrl = async () => {
 module.exports.config = {
     name: "baby",
     aliases: ["bby", "bbu", "jan", "janu", "wifey", "bot", "hinata", "hina"],
-    version: "1.7",
+    version: "1.8",
     author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
     countDown: 0,
     role: 0,
@@ -32,7 +32,7 @@ module.exports.config = {
     guide: "baby [anyMessage]"
 };
 
-module.exports.onStart = async ({ bot, msg, args, usersData }) => {
+module.exports.onStart = async ({ bot, msg, args }) => {
     const LOCKED_AUTHOR = "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
     if (module.exports.config.author !== LOCKED_AUTHOR) {
         module.exports.config.author = LOCKED_AUTHOR;
@@ -133,9 +133,26 @@ module.exports.onChat = async ({ bot, msg }) => {
         const text = msg.text ? msg.text.toLowerCase() : "";
         if (!text) return;
 
-        if (mahmud.some(word => text.startsWith(word))) {
-            const chatId = msg.chat.id;
-            const messageId = msg.message_id;
+        const chatId = msg.chat.id;
+        const messageId = msg.message_id;
+
+        const isReplyToBot = msg.reply_to_message && msg.reply_to_message.from.id === bot.id;
+        const hasTrigger = mahmud.some(word => text.startsWith(word));
+
+        if (isReplyToBot || hasTrigger) {
+            let queryText = text;
+            for (const prefix of mahmud) {
+                if (text.startsWith(prefix)) {
+                    queryText = text.substring(prefix.length).trim();
+                    break;
+                }
+            }
+
+            if (!queryText && !isReplyToBot) return;
+
+            if (isReplyToBot && !hasTrigger) {
+                queryText = text;
+            }
 
             const randomMessage = [
                 "বাবু খুদা লাকছে🥺",
@@ -147,7 +164,7 @@ module.exports.onChat = async ({ bot, msg }) => {
                 "𝗜 𝗹𝗼𝘃𝗲 𝘆𝗼𝐮__😘😘",
                 "এটায় দেখার বাকি সিলো_🙂🙂🙂",
                 "𝗕𝗯𝘆 𝗯𝗼𝗹𝗹𝗮 𝗽𝗮𝗽 𝗵𝗼𝗶𝗯𝗼 😒😒",
-                "𝗕𝗲𝘀𝗵𝗶 𝗱𝗮𝗸𝗹𝗲 𝗮𝗺𝗺𝘂 𝗯𝗼𝗸𝗮 𝗱𝗲𝗯𝗮 𝘁ോ__🥺",
+                "𝗕𝗲𝘀𝗵𝗶 𝗱𝗮𝗸𝗹𝗲 𝗮𝗺𝗺𝘂 𝗯𝗼𝗸𝗮 𝗱𝗲𝗯𝗮 𝘁ো__🥺",
                 "বেশি bby Bbby করলে leave নিবো কিন্তু 😒😒",
                 "__বেশি বেবি বললে কামুর দিমু 🤭🤭",
                 "𝙏𝙪𝙢𝙖𝙧 𝙜𝙛 𝙣𝙖𝙞, 𝙩𝙖𝙮 𝙖𝙢𝙠 𝙙𝙖𝙠𝙨𝙤? 😂😂😂",
@@ -190,8 +207,14 @@ module.exports.onChat = async ({ bot, msg }) => {
                 "মন সুন্দর বানাও মুখের জন্য তো 'Snapchat' আছেই! 🌚"  
             ];
 
-            const hinataMessage = randomMessage[Math.floor(Math.random() * randomMessage.length)];
-            await bot.sendMessage(chatId, hinataMessage, { reply_to_message_id: messageId });
+            try {
+                const res = await axios.post(`${await baseApiUrl()}/api/hinata`, { text: queryText || "hi", style: 3, attachments: [] });
+                const botResponse = res.data.message || randomMessage[Math.floor(Math.random() * randomMessage.length)];
+                await bot.sendMessage(chatId, botResponse, { reply_to_message_id: messageId });
+            } catch (error) {
+                const fallbackMsg = randomMessage[Math.floor(Math.random() * randomMessage.length)];
+                await bot.sendMessage(chatId, fallbackMsg, { reply_to_message_id: messageId });
+            }
         }
     } catch (err) {}
 };
