@@ -1,0 +1,90 @@
+const config = require("../config");
+
+module.exports = {
+  name: "out",
+  aliases: ["leave", "leavegroup"],
+  version: "1.0.0",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
+  role: 1,
+  category: "admin",
+  usePrefix: false,
+  noPrefix: true,
+  hasPrefix: false,
+  nonPrefix: true,
+  handleEvent: true,
+  shortDescription: "Leaves the current group",
+  longDescription: "Sends a goodbye message and automatically leaves the group when an admin writes out.",
+  guide: "out",
+
+  execute: async (bot, msg) => {
+    return module.exports.handleOut(bot, msg);
+  },
+
+  onEvent: async function ({ bot, msg }) {
+    if (!msg || !msg.text) return;
+    const text = msg.text.trim().toLowerCase();
+    if (text === "out" || text === "leave") {
+      return module.exports.handleOut(bot, msg);
+    }
+  },
+
+  handleOut: async function (bot, msg) {
+    const chatId = msg.chat.id;
+    const chatType = msg.chat.type;
+
+    if (chatType !== "group" && chatType !== "supergroup") {
+      return bot.sendMessage(
+        chatId,
+        `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+───────────────
+⚠️ 𝐓𝐇𝐈𝐒 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐀𝐍 𝐎𝐍𝐋𝐘 𝐁𝐄 𝐔𝐒𝐄𝐃 𝐈𝐍 𝐆𝐑𝐎𝐔𝐏𝐒
+───────────────
+⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
+        { reply_to_message_id: msg.message_id }
+      );
+    }
+
+    const userId = msg.from ? msg.from.id : null;
+    let isAdmin = false;
+
+    try {
+      if (userId) {
+        const member = await bot.getChatMember(chatId, userId);
+        if (member.status === "creator" || member.status === "administrator") {
+          isAdmin = true;
+        }
+      }
+    } catch (e) {}
+
+    if (!isAdmin) {
+      return bot.sendMessage(
+        chatId,
+        `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+───────────────
+⚠️ 𝐎𝐍𝐋𝐘 𝐆𝐑𝐎𝐔𝐏 𝐀𝐃𝐌𝐈𝐍𝐒 𝐂𝐀𝐍 𝐔𝐒𝐄 𝐓𝐇𝐈𝐒 𝐂𝐎𝐌𝐌𝐀𝐍𝐃
+───────────────
+⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
+        { reply_to_message_id: msg.message_id }
+      );
+    }
+
+    const goodbyeText = `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+───────────────
+👋 𝐆𝐎𝐎𝐃𝐁𝐘𝐄 𝐄𝐕𝐄𝐑𝐘𝐎𝐍𝐄!
+
+🤖 𝐈 𝐀𝐌 𝐋𝐄𝐀𝐕𝐈𝐍𝐆 𝐓𝐇𝐈𝐒 𝐆𝐑𝐎𝐔𝐏 𝐀𝐒 𝐑𝐄𝐐𝐔𝐄𝐒𝐓𝐄𝐃 𝐁𝐘 𝐀𝐃𝐌𝐈𝐍.
+❤️ 𝐓𝐇𝐀𝐍𝐊 𝐘𝐎𝐔 𝐅𝐎𝐑 𝐔𝐒𝐈𝐍𝐆 𝐎𝐔𝐑 𝐁𝐎𝐓!
+
+───────────────
+⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
+
+    try {
+      await bot.sendMessage(chatId, goodbyeText);
+      await bot.leaveChat(chatId);
+    } catch (err) {
+      try {
+        await bot.leaveChat(chatId);
+      } catch (e) {}
+    }
+  }
+};
