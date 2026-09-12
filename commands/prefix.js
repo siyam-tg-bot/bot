@@ -2,8 +2,8 @@ const config = require("../config");
 
 module.exports = {
   name: "prefix",
-  aliases: ["pfx"],
-  version: "1.0.6",
+  aliases: ["pfx", "পোল"],
+  version: "1.0.7",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "system",
@@ -12,9 +12,11 @@ module.exports = {
   longDescription: "Displays the active prefix, total loaded commands, and status with interactive buttons.",
   guide: "prefix",
 
-  execute: async (bot, msg, args, { prefix: currentPrefix }) => {
+  execute: async (bot, msg, args, extra) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
+
+    const currentPrefix = (extra && extra.prefix) ? extra.prefix : "/";
 
     let botUsername = "SiyamTgBot";
     try {
@@ -43,8 +45,7 @@ module.exports = {
       return String(text).split('').map(c => charMap[c] || c).join('');
     };
 
-    const activePrefix = currentPrefix || "/";
-    const boldPrefix = convertToBold(activePrefix);
+    const boldPrefix = convertToBold(currentPrefix);
     const boldTotalCmds = convertToBold(totalCommands);
 
     const responseText = `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
@@ -55,7 +56,7 @@ module.exports = {
 📊 𝐓𝐎𝐓𝐀𝐋 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒: ${boldTotalCmds}
 ⚡ 𝐒𝐓𝐀𝐓𝐔𝐒: 𝐎𝐍𝐋𝐈𝐍𝐄
 ───────────────
-⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
+⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
 
     return bot.sendMessage(chatId, responseText, {
       reply_to_message_id: messageId,
