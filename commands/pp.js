@@ -3,7 +3,7 @@ const config = require("../config");
 module.exports = {
   name: "pp",
   aliases: ["profile", "avatar"],
-  version: "1.0.0",
+  version: "1.0.1",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "utility",
@@ -33,12 +33,12 @@ module.exports = {
       const captionText = 
 `👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
-📸 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗣𝗜??𝗧𝗨𝗥𝗘
+📸 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗣𝗜𝗖𝗧𝗨𝗥𝗘
 👤 𝐍𝐚𝐦𝐞: ${firstName}
 🆔 𝐔𝐈𝐃: \`${userId}\`
 🌸 আপনার পিকচার!
 ───────────────
-🧚‍♀️𝐍𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
+🧚‍♀️ 𝐍𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
 
       const replyMarkup = {
         inline_keyboard: [
@@ -52,8 +52,9 @@ module.exports = {
         ]
       };
 
-      if (userProfilePhotos.total_count > 0) {
-        const fileId = userProfilePhotos.photos[0][2]?.file_id || userProfilePhotos.photos[0][0].file_id;
+      if (userProfilePhotos && userProfilePhotos.total_count > 0) {
+        const photos = userProfilePhotos.photos[0];
+        const fileId = photos[photos.length - 1].file_id;
         return await bot.sendPhoto(chatId, fileId, {
           caption: captionText,
           parse_mode: "Markdown",
