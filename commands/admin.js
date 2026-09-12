@@ -14,7 +14,7 @@ module.exports = {
   onStart: async function ({ bot, msg, args, usersData }) {
     const chatId = msg.chat.id;
     const senderID = msg.from.id;
-    const configPath = path.join(__dirname, "../config.json");
+    const configPath = path.join(__dirname, "../config.js");
     const config = require(configPath);
 
     if (!config.adminIDs) {
@@ -51,7 +51,7 @@ module.exports = {
         }
       }
 
-      writeFileSync(configPath, JSON.stringify(config, null, 2));
+      writeFileSync(configPath, `module.exports = ${JSON.stringify(config, null, 2)};`);
 
       let msgText = "";
       for (const uid of uids) {
@@ -64,7 +64,7 @@ module.exports = {
         if (addedUsers.includes(uid)) {
           msgText += `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» 🎉 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥 𝗔𝗗𝗗𝗘𝗗\n» ⚜️ 𝗡𝗔𝗠𝗘 : ${name}\n» 🆔 𝗨𝗜𝗗  : ${uid}\n» 💠 𝗥𝗔𝗡𝗞 : 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿\n» 🥂 𝗦𝗧𝗔𝗧𝗨𝗦 : 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬 𝗔𝗗𝗗𝗘𝗗\n» 💎 𝗔𝗖𝗖𝗘𝗦𝗦 : 𝗙𝗨𝗟𝗟 𝗣𝗘𝗥𝗠𝗜𝗦𝗦𝗜𝗢𝗡𝗦\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧\n\n`;
         } else {
-          msgText += `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ⚠️ 𝗔𝗟𝗥𝗘𝗔𝗗𝗬 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥\n» 👤 𝗡𝗔𝗠𝗘 : ${name}\n» 🆔 𝗨𝗜𝗗  : ${uid}\n» 💎 𝗔𝗕𝗢𝗨𝗧 : 𝗔𝗹𝗿𝗲𝗮𝗱𝘆 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧\n\n`;
+          msgText += `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝐒𝐀𝐍 👑\n───────────────\n» ⚠️ 𝗔𝗟𝗥𝗘𝗔𝗗𝗬 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥\n» 👤 𝗡𝗔𝗠𝗘 : ${name}\n» 🆔 𝗨𝗜𝗗  : ${uid}\n» 💎 𝗔𝗕𝗢𝗨𝗧 : 𝗔𝗹𝗿𝗲𝗮𝗱𝘆 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧\n\n`;
         }
       }
 
@@ -73,7 +73,7 @@ module.exports = {
 
     if (args[0] == "remove" || args[0] == "-r") {
       if (!isOwner) {
-        return bot.sendMessage(chatId, `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ❌ 𝗔𝗖𝗖𝗘𝗦𝗦 𝗗𝗘𝗡𝗜𝗘𝗗\n» ⚠️ 𝗢𝗻𝗹𝘆 𝗦𝗜𝗬𝐀𝗠 𝗢𝘄𝗻𝗲𝗿 \n» 👑 𝗖𝗮𝗻 𝗥𝗲𝗺𝗼𝘃𝗲 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿!\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`);
+        return bot.sendMessage(chatId, `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ❌ 𝗔𝗖𝗖𝗘𝗦𝗦 𝗗𝗘𝗡𝗜𝗘𝗗\n» ⚠️ 𝗢n𝗹𝘆 𝗦𝗜𝗬𝗔𝗠 𝗢𝘄𝗻𝗲𝗿 \n» 👑 𝗖𝗮𝗻 𝗥𝗲𝗺𝗼𝘃𝗲 𝗢𝗽𝗲𝗥𝗮𝘁𝗼𝗿!\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`);
       }
 
       let uids = [];
@@ -100,7 +100,7 @@ module.exports = {
         }
       }
 
-      writeFileSync(configPath, JSON.stringify(config, null, 2));
+      writeFileSync(configPath, `module.exports = ${JSON.stringify(config, null, 2)};`);
 
       let msgText = "";
       for (const uid of uids) {
@@ -113,7 +113,7 @@ module.exports = {
         if (removedUsers.includes(uid)) {
           msgText += `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ❌ 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥 𝗥𝗘𝗠𝗢𝗩𝗘𝗗\n» ⚜️ 𝗡𝗔𝗠𝗘 : ${name}\n» 🆔 𝗨𝗜𝗗  : ${uid}\n» 💠 𝗥𝗔𝗡𝗞 : 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿\n» 💔 𝗦𝗧𝗔𝗧𝗨𝗦 : 𝗥𝗲𝗺𝗼𝘃𝗲𝗱 𝗦𝘂𝗰𝗰𝗲𝘀𝘀𝗳𝘂𝗹𝗹𝗬\n» 🔒 𝗔𝗖𝗖𝗘𝗦𝗦 : 𝗣𝗲𝗿𝗺𝗶𝘀𝘀𝗶𝗼𝗻 𝗖𝗹𝗼𝘀𝗲𝗱\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧\n\n`;
         } else {
-          msgText += `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ⚠️ 𝗡𝗢𝗧 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥\n» 👤 𝗡𝗔𝗠𝗘 : ${name}\n» 🆔 𝗨𝗜𝗗  : ${uid}\n» ❌ 𝗡𝗼𝘁 𝗜𝗻 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿 𝗟𝗶𝘀𝘁 ⛔\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧\n\n`;
+          msgText += `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝐒𝐀𝐍 👑\n───────────────\n» ⚠️ 𝗡𝗢𝗧 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥\n» 👤 𝗡𝗔𝗠𝗘 : ${name}\n» 🆔 𝗨𝗜𝗗  : ${uid}\n» ❌ 𝗡𝗼𝘁 𝗜𝗻 𝗢𝗽𝗲𝗿𝗮𝘁𝗼𝗿 𝗟𝗶𝘀𝘁 ⛔\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧\n\n`;
         }
       }
 
@@ -138,6 +138,6 @@ module.exports = {
       return bot.sendMessage(chatId, `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ⚙️ 𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥 𝗟𝗜𝗦𝗧\n───────────────\n${listText.trim() || "» ❌ 𝗡𝗢 𝗢𝗣𝗘𝗥𝗔𝗧𝗢𝗥𝗦 𝗙𝗢𝗨𝗡𝗗 📭"}\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`);
     }
 
-    return bot.sendMessage(chatId, "Invalid usage! Use: admin2 add/remove/list");
+    return bot.sendMessage(chatId, "Invalid usage! Use: admin add/remove/list");
   }
 };
