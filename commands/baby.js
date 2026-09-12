@@ -3,46 +3,77 @@ const axios = require("axios");
 const AUTHOR = "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
 
 const mahmud = [
-  "baby",
-  "bby",
-  "babu",
-  "bbu",
-  "jan",
-  "bot",
-  "জান",
-  "জানু",
-  "বেবি",
-  "hi",
-  "বট",
-  "নিঝুম"
+  "baby", "bby", "babu", "bbu", "jan", "janu", "bot",
+  "জান", "জানু", "বেবি", "hi", "বট", "নিঝুম"
+];
+
+const randomStickerReplies = [
+  "🙈 ইশশ! এত মিষ্টি স্টিকার দিচ্ছ কেন?",
+  "উম্মাহ! 😘 কি সুন্দর স্টিকার!",
+  "স্টিকার না দিয়ে একটু ভালোবেসে কথা বলো তো! 💖",
+  "বেশি স্টিকার মারলে কিন্তু কামড় দিমু 🤭",
+  "বসের দেওয়া বট আমি, স্টিকার দেখে প্রেমে পড়ে গেলাম তো! 🫣"
+];
+
+const randomNoPrefixReplies = [
+  "বাবু খুদা লাকছে🥺",
+  "Hop beda😾, Boss বল boss😼",
+  "আমাকে ডাকলে ,আমি কিন্তূ কিস করে দেবো😘",
+  "গোলাপ ফুল এর জায়গায় আমি দিলাম তোমায় মেসেজ 🌸",
+  "বলো কি বলবা, সবার সামনে বলবা নাকি?🤭🤏",
+  "𝗜 𝗹𝗼𝘃𝗲 𝘆𝗼𝘂__😘😘",
+  "𝗕𝗯𝘆 𝗯𝗼𝗹𝗹𝗮 𝗽𝗮𝗽 𝗵𝗼𝗶𝗯𝗼 😒😒",
+  "বেশি bby Bbby করলে leave নিবো কিন্তু 😒😒",
+  "__বেশি বেবি বললে কামুর দিমু 🤭🤭",
+  "𝙏𝙪𝙢𝙖𝙧 𝙜𝙛 𝙣𝙖𝙞, 𝙩𝙖𝙮 𝙖𝙢𝙠 𝙙𝙖𝙠𝙨𝙤? 😂😂😂",
+  "আমাকে ডেকো না,আমি ব্যাস্ত আসি🙆🏻‍♀",
+  "𝗕𝗯𝘆 𝗕𝗯𝘆 না করে আমার বস মানে, 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 এর কথা চিন্তা করো 😑",
+  "🍺 এই নাও জুস খাও..! 𝗕𝗯𝘆 বলতে বলতে হাপায় গেছো না 🥲",
+  "𝗔𝘀𝘀𝗮𝗹𝗮𝗺𝘂𝗹𝗮𝗶𝗸𝘂𝗺 🐤🐤",
+  "খাওয়া দাওয়া করসো 🙄",
+  "এত কাছেও এসো না,প্রেম এ পরে যাবো তো 🙈",
+  "আরে Bolo আমার জান, কেমন আসো? 😚",
+  "amr JaNu lagbe,Tumi ki single aso?",
+  "কথা দেও আমাকে পটাবা...!! 😌"
 ];
 
 const baseApiUrl = async () => {
   try {
-    const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json", { timeout: 10000 });
-    return base.data.mahmud;
+    const base = await axios.get("https://raw.githubusercontent.com/mahmud-aura/HINATA/main/baseApiUrl.json", { timeout: 8000 });
+    return base.data.mahmud || "https://hinata-api.onrender.com";
   } catch (e) {
     return "https://hinata-api.onrender.com";
   }
 };
 
+function filterText(text) {
+  if (!text) return text;
+  const badWords = ["sex", "chodi", "mugi", "nude", "১৮+", "চুদা", "চোদ"];
+  let cleanText = text;
+  badWords.forEach(word => {
+    if (cleanText.toLowerCase().includes(word)) {
+      cleanText = "ছিঃ! ভালো হয়ে যাও, এসব পচা কথা বলতে নেই 🙈";
+    }
+  });
+  return cleanText;
+}
+
 module.exports = {
   config: {
-    name: "baby",
-    aliases: ["bby", "bbu", "jan", "janu", "wifey", "bot", "hinata", "hina"],
-    version: "1.7",
+    name: "bby",
+    aliases: ["baby", "jan", "janu", "wifey", "bot", "hinata", "hina"],
+    version: "2.5-PRO",
     author: AUTHOR,
     role: 0,
-    shortDescription: "AI Baby Chatbot & SimSimi",
-    longDescription: "Fast & smart AI SimSimi chat bot with teach and custom reply system",
+    shortDescription: "Always Active AI Baby Chatbot",
+    longDescription: "Fast 100% active AI chatbot supporting stickers, no-prefix chat, and auto reply system",
     category: "chat",
-    guide: "{pn} [text]\n{pn} teach [Message] - [Reply1], [Reply2]...\n{pn} remove [Message] - [index]\n{pn} edit [Message] - [NewMessage]\n{pn} list"
+    guide: "{pn} [text] | reply to message/sticker | teach [msg] - [reply]"
   },
 
   onStart: async function ({ bot, msg, args }) {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    const uid = msg.from.id;
 
     if (this.config.author !== AUTHOR) {
       return bot.sendMessage(chatId, "⚠️ Author name changed! Command locked.", {
@@ -50,129 +81,134 @@ module.exports = {
       });
     }
 
-    const fullMsg = args.join(" ").toLowerCase();
+    if (msg.sticker || (msg.reply_to_message && msg.reply_to_message.sticker && (!args || args.length === 0))) {
+      const reply = randomStickerReplies[Math.floor(Math.random() * randomStickerReplies.length)];
+      return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
+    }
 
-    try {
-      if (!args[0]) {
-        const ran = ["Bolo baby", "I love you", "type ,bby hi"];
-        const randomChoice = ran[Math.floor(Math.random() * ran.length)];
-        return bot.sendMessage(chatId, randomChoice, {
+    let userText = args ? args.join(" ").trim() : "";
+
+    if (!userText && msg.reply_to_message && msg.reply_to_message.text) {
+      userText = msg.reply_to_message.text;
+    }
+
+    if (!userText) {
+      const ran = [
+        "Bolo baby, কি বলবা? 😚",
+        "I love you baby ❤️",
+        "আমাকে ডাকলে কিন্তু কিস করে দেবো 😘",
+        "হঠাৎ আমাকে মনে পড়লো? 🙄"
+      ];
+      return bot.sendMessage(chatId, ran[Math.floor(Math.random() * ran.length)], {
+        reply_to_message_id: messageId
+      });
+    }
+
+    const lowerText = userText.toLowerCase();
+
+    if (lowerText.startsWith("teach ")) {
+      const mahmudStr = userText.substring(6);
+      const [trigger, ...responsesArr] = mahmudStr.split(" - ");
+      const responses = responsesArr.join(" - ");
+      if (!trigger || !responses) {
+        return bot.sendMessage(chatId, "❌ | Format: ,bby teach [question] - [reply1, reply2]", {
           reply_to_message_id: messageId
         });
       }
-
-      const subCommand = args[0].toLowerCase();
-
-      if (subCommand === "teach") {
-        const mahmudStr = fullMsg.replace("teach ", "");
-        const [trigger, ...responsesArr] = mahmudStr.split(" - ");
-        const responses = responsesArr.join(" - ");
-        if (!trigger || !responses) {
-          return bot.sendMessage(chatId, "❌ | Usage: ,baby teach [question] - [response1, response2,...]", {
-            reply_to_message_id: messageId
-          });
-        }
+      try {
         const baseUrl = await baseApiUrl();
-        const response = await axios.post(`${baseUrl}/api/jan/teach`, { trigger, responses, userID: uid });
-        const userName = msg.from.first_name || "Unknown User";
-        return bot.sendMessage(
-          chatId,
-          `✅ Replies added: "${responses}" to "${trigger}"\n• 𝐓𝐞𝐚𝐜𝐡𝐞𝐫: ${userName}\n• 𝐓𝐨𝐭𝐚𝐥: ${response.data.count || 0}`,
-          { reply_to_message_id: messageId }
-        );
+        await axios.post(`${baseUrl}/api/jan/teach`, { trigger, responses, userID: msg.from.id });
+        return bot.sendMessage(chatId, `✅ Reply added to "${trigger.trim()}"`, { reply_to_message_id: messageId });
+      } catch (e) {
+        return bot.sendMessage(chatId, "⚠️ Teach error, try again later.", { reply_to_message_id: messageId });
       }
+    }
 
-      if (subCommand === "remove" || subCommand === "rm") {
-        const mahmudStr = fullMsg.replace(/^remove\s+|^rm\s+/, "");
-        const [trigger, index] = mahmudStr.split(" - ");
-        if (!trigger || !index || isNaN(index)) {
-          return bot.sendMessage(chatId, "❌ | Usage: ,baby remove [question] - [index]", {
-            reply_to_message_id: messageId
-          });
-        }
+    if (lowerText.startsWith("remove ") || lowerText.startsWith("rm ")) {
+      const mahmudStr = userText.replace(/^remove\s+|^rm\s+/i, "");
+      const [trigger, index] = mahmudStr.split(" - ");
+      if (!trigger || !index || isNaN(index)) {
+        return bot.sendMessage(chatId, "❌ | Usage: ,bby remove [question] - [index]", { reply_to_message_id: messageId });
+      }
+      try {
         const baseUrl = await baseApiUrl();
         const response = await axios.delete(`${baseUrl}/api/jan/remove`, {
           data: { trigger, index: parseInt(index, 10) }
         });
-        return bot.sendMessage(chatId, response.data.message || "Removed successfully!", {
-          reply_to_message_id: messageId
-        });
+        return bot.sendMessage(chatId, response.data.message || "Removed successfully!", { reply_to_message_id: messageId });
+      } catch (e) {
+        return bot.sendMessage(chatId, "⚠️ Error removing word.", { reply_to_message_id: messageId });
       }
+    }
 
-      if (subCommand === "list") {
+    if (lowerText.startsWith("list")) {
+      try {
         const baseUrl = await baseApiUrl();
-        const endpoint = args[1] === "all" ? "/list/all" : "/list";
+        const endpoint = lowerText.includes("all") ? "/list/all" : "/list";
         const response = await axios.get(`${baseUrl}/api/jan${endpoint}`);
-
-        if (args[1] === "all" && response.data.data) {
-          let listMsg = "👑 List of Baby teachers:\n\n";
-          const data = Object.entries(response.data.data).sort((a, b) => b[1] - a[1]).slice(0, 100);
-          for (let i = 0; i < data.length; i++) {
-            const [userID, count] = data[i];
-            listMsg += `${i + 1}. User ${userID}: ${count}\n`;
-          }
-          return bot.sendMessage(chatId, listMsg, { reply_to_message_id: messageId });
-        }
-        return bot.sendMessage(chatId, response.data.message || "No list data found.", {
-          reply_to_message_id: messageId
-        });
+        return bot.sendMessage(chatId, response.data.message || "List empty.", { reply_to_message_id: messageId });
+      } catch (e) {
+        return bot.sendMessage(chatId, "⚠️ Error fetching list.", { reply_to_message_id: messageId });
       }
+    }
 
-      if (subCommand === "edit") {
-        const mahmudStr = fullMsg.replace("edit ", "");
-        const [oldTrigger, ...newArr] = mahmudStr.split(" - ");
-        const newResponse = newArr.join(" - ");
-        if (!oldTrigger || !newResponse) {
-          return bot.sendMessage(chatId, "❌ | Format: ,baby edit [question] - [newResponse]", {
-            reply_to_message_id: messageId
-          });
-        }
-        const baseUrl = await baseApiUrl();
-        await axios.put(`${baseUrl}/api/jan/edit`, { oldTrigger, newResponse });
-        return bot.sendMessage(chatId, `✅ Edited "${oldTrigger}" to "${newResponse}"`, {
-          reply_to_message_id: messageId
-        });
-      }
-
-      if (subCommand === "msg") {
-        const searchTrigger = args.slice(1).join(" ");
-        if (!searchTrigger) {
-          return bot.sendMessage(chatId, "Please provide a message to search.", {
-            reply_to_message_id: messageId
-          });
-        }
-        try {
-          const baseUrl = await baseApiUrl();
-          const response = await axios.get(`${baseUrl}/api/jan/msg`, {
-            params: { userMessage: `msg ${searchTrigger}` }
-          });
-          return bot.sendMessage(chatId, response.data.message || "No message found.", {
-            reply_to_message_id: messageId
-          });
-        } catch (error) {
-          const errorMessage = error.response?.data?.error || error.message || "error";
-          return bot.sendMessage(chatId, errorMessage, { reply_to_message_id: messageId });
-        }
-      }
-
-      const getBotResponse = async (text) => {
-        try {
-          const baseUrl = await baseApiUrl();
-          const res = await axios.post(`${baseUrl}/api/hinata`, { text, style: 3 });
-          return res.data.message || "error baby🥹";
-        } catch {
-          return "error baby🥹";
-        }
-      };
-
-      const botResponse = await getBotResponse(fullMsg);
-      return bot.sendMessage(chatId, botResponse, { reply_to_message_id: messageId });
-
+    try {
+      const baseUrl = await baseApiUrl();
+      const res = await axios.post(`${baseUrl}/api/hinata`, { text: userText, style: 3 }, { timeout: 12000 });
+      let botReply = res.data ? res.data.message : "error baby🥹";
+      botReply = filterText(botReply);
+      return bot.sendMessage(chatId, botReply, { reply_to_message_id: messageId });
     } catch (err) {
-      console.error(err);
-      return bot.sendMessage(chatId, `⚠️ Error: ${err.message}`, {
-        reply_to_message_id: messageId
-      });
+      return bot.sendMessage(chatId, "আরে বলো আমার জান, কেমন আছো? 😚", { reply_to_message_id: messageId });
+    }
+  },
+
+  onChat: async function ({ bot, msg }) {
+    if (!msg || this.config.author !== AUTHOR) return;
+
+    const chatId = msg.chat.id;
+    const messageId = msg.message_id;
+
+    if (msg.sticker) {
+      const isReplyToBot = msg.reply_to_message && msg.reply_to_message.from && msg.reply_to_message.from.is_bot;
+      if (isReplyToBot) {
+        const reply = randomStickerReplies[Math.floor(Math.random() * randomStickerReplies.length)];
+        return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
+      }
+      return;
+    }
+
+    const text = (msg.text || msg.caption || "").toLowerCase().trim();
+    if (!text) return;
+
+    const hasTrigger = mahmud.some(word => text.startsWith(word) || text === word);
+
+    if (hasTrigger) {
+      const words = text.split(/\s+/);
+      if (words.length === 1) {
+        const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
+        return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
+      }
+
+      let cleanQuery = text;
+      for (const prefix of mahmud) {
+        if (cleanQuery.startsWith(prefix)) {
+          cleanQuery = cleanQuery.substring(prefix.length).trim();
+          break;
+        }
+      }
+      if (!cleanQuery) cleanQuery = text;
+
+      try {
+        const baseUrl = await baseApiUrl();
+        const res = await axios.post(`${baseUrl}/api/hinata`, { text: cleanQuery, style: 3 }, { timeout: 10000 });
+        let botReply = res.data ? res.data.message : "error baby🥹";
+        botReply = filterText(botReply);
+        return bot.sendMessage(chatId, botReply, { reply_to_message_id: messageId });
+      } catch (e) {
+        const randomMsg = randomNoPrefixReplies[Math.floor(Math.random() * randomNoPrefixReplies.length)];
+        return bot.sendMessage(chatId, randomMsg, { reply_to_message_id: messageId });
+      }
     }
   }
 };
