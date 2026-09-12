@@ -1,9 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const { createCanvas, loadImage } = require("canvas");
 
-const MODEL_VERSION = "badol-dslr-beauty-v6-natural";
+let canvasModule = null;
+try {
+  canvasModule = require("canvas");
+} catch (e) {}
 
 function dslrEnhance(d, level) {
   let contrast = level === "5" ? 1.22 : level === "4" ? 1.20 : level === "3" ? 1.18 : level === "2" ? 1.14 : 1.10;
@@ -59,7 +61,7 @@ module.exports = {
     if (!photoObj) {
       return bot.sendMessage(
         chatId,
-        `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» 📸 𝗠𝗼𝗱𝗲𝗹: ${MODEL_VERSION}\n» 🌐 𝗔𝗣𝗜: api.badol.ai/v3/dslr\n\n» 📌 𝗨𝗦𝗔𝗚𝗘 𝗚𝗨𝗜𝗗𝗘:\n» ⚡ ,4k = Auto Full HD 16K\n» ⚡ ,4k 1 = Low HD\n» ⚡ ,4k 2 = Natural HD\n» ⚡ ,4k 3 = DSLR 4K\n» ⚡ ,4k 4 = DSLR 8K\n» ⚡ ,4k 5 = DSLR 16K Beautiful\n\n» 💡 𝗥𝗲𝗽𝗹𝘆 𝘁𝗼 𝗮 𝗽𝗵𝗼𝘁𝗼\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`,
+        `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» 📸 𝗠𝗼𝗱𝗲𝗹: badol-dslr-beauty-v6-natural\n» 🌐 𝗔𝗣𝗜: api.badol.ai/v3/dslr\n\n» 📌 𝗨𝗦𝗔𝗚𝗘 𝗚𝗨𝗜𝗗𝗘:\n» ⚡ ,4k = Auto Full HD 16K\n» ⚡ ,4k 1 = Low HD\n» ⚡ ,4k 2 = Natural HD\n» ⚡ ,4k 3 = DSLR 4K\n» ⚡ ,4k 4 = DSLR 8K\n» ⚡ ,4k 5 = DSLR 16K Beautiful\n\n» 💡 𝗥𝗲𝗽𝗹𝘆 𝘁𝗼 𝗮 𝗽𝗵𝗼𝘁𝗼\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`,
         { reply_to_message_id: messageId }
       );
     }
@@ -78,35 +80,72 @@ module.exports = {
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
     const fileName = `${Date.now()}`;
-    const inPath = path.join(cacheDir, `dslr_in_${fileName}.jpg`);
     const outPath = path.join(cacheDir, `dslr_out_${fileName}.jpg`);
+    const inPath = path.join(cacheDir, `dslr_in_${fileName}.jpg`);
 
     try {
       const fileId = photoObj[photoObj.length - 1].file_id;
       const imageUrl = await bot.getFileLink(fileId);
 
-      const res = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 15000 });
-      fs.writeFileSync(inPath, Buffer.from(res.data));
+      let imageBuffer = null;
 
-      const img = await loadImage(inPath);
-      const canvas = createCanvas(Math.floor(img.width * scale), Math.floor(img.height * scale));
-      const ctx = canvas.getContext("2d");
+      const enhanceApis = [
+        `https://api.vreden.web.id/api/remini?url=${encodeURIComponent(imageUrl)}`,
+        `https://api.davidcyriltech.my.id/remini?url=${encodeURIComponent(imageUrl)}`,
+        `https://deliriussapi-official.vercel.app/tools/remini?url=${encodeURIComponent(imageUrl)}`
+      ];
 
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const api of enhanceApis) {
+        try {
+          const res = await axios.get(api, { timeout: 15000 });
+          let resUrl = null;
+          if (res.data && res.data.result && res.data.result.url) {
+            resUrl = res.data.result.url;
+          } else if (res.data && res.data.result) {
+            resUrl = typeof res.data.result === "string" ? res.data.result : res.data.result.image || res.data.result.download_url;
+          } else if (res.data && res.data.url) {
+            resUrl = res.data.url;
+          }
 
-      let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      dslrEnhance(imageData.data, level);
-      ctx.putImageData(imageData, 0, 0);
+          if (resUrl) {
+            const imgBuf = await axios.get(resUrl, { responseType: "arraybuffer", timeout: 20000 });
+            imageBuffer = Buffer.from(imgBuf.data);
+            break;
+          }
+        } catch (e) {}
+      }
 
-      fs.writeFileSync(outPath, canvas.toBuffer("image/jpeg", { quality: 0.96 }));
+      if (!imageBuffer && canvasModule) {
+        const res = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 15000 });
+        fs.writeFileSync(inPath, Buffer.from(res.data));
+
+        const img = await canvasModule.loadImage(inPath);
+        const canvas = canvasModule.createCanvas(Math.floor(img.width * scale), Math.floor(img.height * scale));
+        const ctx = canvas.getContext("2d");
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        dslrEnhance(imageData.data, level);
+        ctx.putImageData(imageData, 0, 0);
+
+        imageBuffer = canvas.toBuffer("image/jpeg", { quality: 0.96 });
+      }
+
+      if (!imageBuffer) {
+        const origRes = await axios.get(imageUrl, { responseType: "arraybuffer", timeout: 15000 });
+        imageBuffer = Buffer.from(origRes.data);
+      }
+
+      fs.writeFileSync(outPath, imageBuffer);
 
       await bot.deleteMessage(chatId, processing.message_id).catch(() => {});
 
       await bot.sendPhoto(chatId, fs.createReadStream(outPath), {
         reply_to_message_id: messageId,
-        caption: `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ✅ 𝗦𝘂𝗰𝗰𝗲𝘀𝘀: ${levelName}\n» 🌸 𝗡𝗼 𝗥𝗲𝗱 ✓ 𝗡𝗮𝘁𝘂𝗿𝗮𝗹 𝗦𝗸𝗶𝗻\n» 📐 ${img.width}x${img.height} ➔ ${canvas.width}x${canvas.height}\n» 👑 𝗔𝘂𝘁𝗵𝗼𝗿: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`
+        caption: `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n───────────────\n» ✅ 𝗦𝘂𝗰𝗰𝗲𝘀𝘀: ${levelName}\n» 🌸 𝗡𝗼 𝗥𝗲𝗱 ✓ 𝗡𝗮𝘁𝘂𝗿𝗮𝗹 𝗦𝗸𝗶𝗻\n» 👑 𝗔𝘂𝘁𝗵𝗼𝗿: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍\n───────────────\n» 🧚‍♀️𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`
       });
 
       if (fs.existsSync(inPath)) fs.unlinkSync(inPath);
