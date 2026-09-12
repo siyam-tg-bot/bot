@@ -1,90 +1,135 @@
-const config = require("../config");
+const fs = require("fs");
+const path = require("path");
+
+const wordFilePath = path.join(__dirname, "../word_data.json");
+
+function loadWords() {
+  if (!fs.existsSync(wordFilePath)) {
+    try {
+      fs.writeFileSync(wordFilePath, JSON.stringify({}, null, 2));
+    } catch (e) {}
+    return {};
+  }
+  try {
+    return JSON.parse(fs.readFileSync(wordFilePath, "utf8"));
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveWords(data) {
+  try {
+    fs.writeFileSync(wordFilePath, JSON.stringify(data, null, 2));
+  } catch (e) {}
+}
 
 module.exports = {
   name: "out",
-  aliases: ["leave", "leavegroup"],
+  aliases: ["teach", "addword"],
   version: "1.0.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-  role: 1,
-  category: "admin",
+  role: 0,
+  category: "utility",
   usePrefix: false,
   noPrefix: true,
   hasPrefix: false,
   nonPrefix: true,
   handleEvent: true,
-  shortDescription: "Leaves the current group",
-  longDescription: "Sends a goodbye message and automatically leaves the group when an admin writes out.",
-  guide: "out",
+  shortDescription: "Word response system",
+  longDescription: "Teaches the bot to respond automatically when specific words are used.",
+  guide: "word [trigger] - [response]",
 
-  execute: async (bot, msg) => {
-    return module.exports.handleOut(bot, msg);
+  execute: async (bot, msg, args) => {
+    return module.exports.handleWord(bot, msg, args);
   },
 
   onEvent: async function ({ bot, msg }) {
     if (!msg || !msg.text) return;
-    const text = msg.text.trim().toLowerCase();
-    if (text === "out" || text === "leave") {
-      return module.exports.handleOut(bot, msg);
+    const text = msg.text.trim();
+    const words = loadWords();
+
+    const lowerText = text.toLowerCase();
+    if (words[lowerText]) {
+      return bot.sendMessage(msg.chat.id, words[lowerText], {
+        reply_to_message_id: msg.message_id
+      });
+    }
+
+    if (lowerText.startsWith("word ") || lowerText.startsWith("teach ")) {
+      const args = text.split(" ").slice(1);
+      return module.exports.handleWord(bot, msg, args);
     }
   },
 
-  handleOut: async function (bot, msg) {
+  handleWord: async function (bot, msg, args) {
     const chatId = msg.chat.id;
-    const chatType = msg.chat.type;
+    const messageId = msg.message_id;
 
-    if (chatType !== "group" && chatType !== "supergroup") {
+    if (!args || args.length === 0) {
       return bot.sendMessage(
         chatId,
         `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
-⚠️ 𝐓𝐇𝐈𝐒 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐂𝐀𝐍 𝐎𝐍𝐋𝐘 𝐁𝐄 𝐔𝐒𝐄𝐃 𝐈𝐍 𝐆𝐑𝐎𝐔𝐏𝐒
+📝 𝐔𝐒𝐀𝐆𝐄: word [trigger] - [response]
+📌 𝐄𝐗𝐀𝐌𝐏𝐋𝐄: word hi - hello there!
 ───────────────
 ⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
-        { reply_to_message_id: msg.message_id }
+        { reply_to_message_id: messageId }
       );
     }
 
-    const userId = msg.from ? msg.from.id : null;
-    let isAdmin = false;
-
-    try {
-      if (userId) {
-        const member = await bot.getChatMember(chatId, userId);
-        if (member.status === "creator" || member.status === "administrator") {
-          isAdmin = true;
-        }
-      }
-    } catch (e) {}
-
-    if (!isAdmin) {
+    const fullText = args.join(" ");
+    if (!fullText.includes("-")) {
       return bot.sendMessage(
         chatId,
         `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
-⚠️ 𝐎𝐍𝐋𝐘 𝐆𝐑𝐎𝐔𝐏 𝐀𝐃𝐌𝐈𝐍𝐒 𝐂𝐀𝐍 𝐔𝐒𝐄 𝐓𝐇𝐈𝐒 𝐂𝐎𝐌𝐌𝐀𝐍𝐃
+❌ 𝐏𝐋𝐄𝐀𝐒𝐄 𝐔𝐒𝐄 ' - ' 𝐓𝐎 𝐒𝐄𝐏𝐀𝐑𝐀𝐓𝐄 𝐓𝐑𝐈𝐆𝐆𝐄𝐑 𝐀𝐍𝐃 𝐑𝐄𝐒𝐏𝐎𝐍𝐒𝐄
 ───────────────
 ⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
-        { reply_to_message_id: msg.message_id }
+        { reply_to_message_id: messageId }
       );
     }
 
-    const goodbyeText = `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+    const parts = fullText.split("-");
+    const trigger = parts[0].trim().toLowerCase();
+    const response = parts.slice(1).join("-").trim();
+
+    if (!trigger || !response) {
+      return bot.sendMessage(
+        chatId,
+        `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
-👋 𝐆𝐎𝐎𝐃𝐁𝐘𝐄 𝐄𝐕𝐄𝐑𝐘𝐎𝐍𝐄!
-
-🤖 𝐈 𝐀𝐌 𝐋𝐄𝐀𝐕𝐈𝐍𝐆 𝐓𝐇𝐈𝐒 𝐆𝐑𝐎𝐔𝐏 𝐀𝐒 𝐑𝐄𝐐𝐔𝐄𝐒𝐓𝐄𝐃 𝐁𝐘 𝐀𝐃𝐌𝐈𝐍.
-❤️ 𝐓𝐇𝐀𝐍𝐊 𝐘𝐎𝐔 𝐅𝐎𝐑 𝐔𝐒𝐈𝐍𝐆 𝐎𝐔𝐑 𝐁𝐎𝐓!
-
+❌ 𝐈𝐍𝐕𝐀𝐋𝐈𝐃 𝐓𝐑𝐈𝐆𝐆𝐄𝐑 𝐎𝐑 𝐑𝐄𝐒𝐏𝐎𝐍𝐒𝐄
 ───────────────
-⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
-
-    try {
-      await bot.sendMessage(chatId, goodbyeText);
-      await bot.leaveChat(chatId);
-    } catch (err) {
-      try {
-        await bot.leaveChat(chatId);
-      } catch (e) {}
+⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
+        { reply_to_message_id: messageId }
+      );
     }
+
+    const words = loadWords();
+    words[trigger] = response;
+    saveWords(words);
+
+    const convertToBold = (txt) => {
+      const charMap = {
+        'A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌','N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙',
+        'a':'𝐚','b':'𝐛','c':'𝐜','d':'𝐝','e':'𝐞','f':'𝐟','g':'𝐠','h':'𝐡','i':'𝐢','j':'𝐣','k':'𝐤','l':'𝐥','m':'𝐦','n':'𝐧','o':'𝐨','p':'𝐩','q':'𝐪','r':'𝐫','s':'𝐬','t':'𝐭','u':'𝐮','v':'𝐯','w':'𝐰','x':'𝐱','y':'𝐲','z':'𝐳',
+        '0':'𝟎','1':'𝟏','2':'𝟐','3':'𝟑','4':'𝟒','5':'𝟓','6':'𝟔','7':'𝟕','8':'𝟖','9':'𝟗'
+      };
+      return String(txt).split('').map(c => charMap[c] || c).join('');
+    };
+
+    return bot.sendMessage(
+      chatId,
+      `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+───────────────
+✅ 𝐖𝐎𝐑𝐃 𝐀𝐃𝐃𝐄𝐃 𝐒𝐔𝐂𝐂𝐄𝐒𝐒𝐅𝐔𝐋𝐋𝐘
+📌 𝐓𝐑𝐈𝐆𝐆𝐄𝐑: ${convertToBold(trigger)}
+💬 𝐑𝐄𝐒𝐏𝐎𝐍𝐒𝐄: ${convertToBold(response)}
+───────────────
+⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
+      { reply_to_message_id: messageId }
+    );
   }
 };
