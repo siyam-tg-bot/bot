@@ -6,23 +6,21 @@ const { createCanvas, loadImage } = require("canvas");
 const AUTHOR_LOCK = "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
 
 module.exports = {
-  config: {
-    name: "uid2",
-    aliases: ["id2", "userinfo2"],
-    version: "1.0.3",
-    author: AUTHOR_LOCK,
-    role: 0,
-    category: "info",
-    shortDescription: "Get user's UID and Stylist Banner",
-    longDescription: "Generates an advanced Cool style banner with User ID and Avatar.",
-    guide: "/uid2"
-  },
+  name: "uid2",
+  aliases: ["id2", "userinfo2"],
+  version: "1.0.3",
+  author: AUTHOR_LOCK,
+  role: 0,
+  category: "info",
+  shortDescription: "Get user's UID and Stylist Banner",
+  longDescription: "Generates an advanced Cool style banner with User ID and Avatar.",
+  guide: "/uid2",
 
-  execute: async (bot, msg) => {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
 
-    if (module.exports.config.author !== AUTHOR_LOCK) {
+    if (module.exports.author !== AUTHOR_LOCK) {
       return bot.sendMessage(chatId, "⛔ Author lock failed!", { reply_to_message_id: messageId });
     }
 
@@ -35,7 +33,7 @@ module.exports = {
     const name = (targetUser.first_name + (targetUser.last_name ? " " + targetUser.last_name : "")).toUpperCase();
     const cachePath = path.join(__dirname, `uid_card_${Date.now()}.png`);
 
-    const processMsg = await bot.sendMessage(chatId, "-ˋˏ✄━═━═━═", { reply_to_message_id: messageId });
+    const processMsg = await bot.sendMessage(chatId, "⏳ ছবি প্রস্তুত করা হচ্ছে...", { reply_to_message_id: messageId });
 
     try {
       const width = 1200;
@@ -153,7 +151,8 @@ module.exports = {
       } catch (e) {}
 
       await bot.sendPhoto(chatId, cachePath, {
-        caption: "UID: " + targetID,
+        caption: "UID: `" + targetID + "`",
+        parse_mode: "Markdown",
         reply_to_message_id: messageId
       });
 
