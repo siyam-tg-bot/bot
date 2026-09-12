@@ -1,15 +1,9 @@
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-const { execFile } = require("child_process");
-const { promisify } = require("util");
-
-const exec = promisify(execFile);
 
 const TEMP = path.join(process.cwd(), "temp_songs");
 const MAX = 49 * 1024 * 1024;
-const TIMEOUT = 180000;
-const RETRIES = 3;
 
 if (!fs.existsSync(TEMP)) {
   fs.mkdirSync(TEMP, { recursive: true });
@@ -18,8 +12,8 @@ if (!fs.existsSync(TEMP)) {
 module.exports = {
   name: "song",
   aliases: ["music", "sing", "audio"],
-  version: "4.0.0",
-  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
+  version: "6.0.0",
+  author: "SIYAM HASAN",
   role: 0,
   shortDescription: "Download songs",
   longDescription: "Search and download songs",
@@ -28,14 +22,14 @@ module.exports = {
 
   execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
-    const messageId = msg.message_id;
+    const replyId = msg.message_id;
 
     if (!args || !args.length) {
       return bot.sendMessage(
         chatId,
         "<b>❌ PLEASE ENTER A SONG NAME</b>\n\n<b>EXAMPLE: /song faded</b>",
         {
-          reply_to_message_id: messageId,
+          reply_to_message_id: replyId,
           parse_mode: "HTML"
         }
       );
@@ -43,103 +37,78 @@ module.exports = {
 
     const query = args.join(" ").trim();
     const id = Date.now() + "_" + Math.random().toString(36).slice(2);
-    let loading = null;
-    let file = null;
-    let title = query;
+    let loading;
 
     try {
       loading = await bot.sendMessage(
         chatId,
-        "<b>🔎 SEARCHING FOR YOUR SONG</b>\n\n<b>🎵 " +
-          escapeHtml(query) +
-          "</b>",
+        "<b>🔎 SEARCHING SONG</b>\n\n<b>🎵 " + html(query) + "</b>",
         {
-          reply_to_message_id: messageId,
+          reply_to_message_id: replyId,
           parse_mode: "HTML"
         }
       );
 
-      let result = await ytdlpDownload(query, id);
+      let result = await downloadSong(query, id);
 
-      if (result) {
-        file = result.file;
-        title = result.title || query;
+      if (!result) {
+        throw new Error("DOWNLOAD SOURCE UNAVAILABLE");
       }
 
-      if (!file) {
-        await editLoading(
-          bot,
-          chatId,
-          loading,
-          "<b>🔄 TRYING BACKUP MUSIC SERVERS</b>\n\n<b>🎵 " +
-            escapeHtml(query) +
-            "</b>"
-        );
+      await edit(bot, chatId, loading, "<b>🎧 PROCESSING SONG</b>");
 
-        result = await apiDownload(query, id);
+      const audio = await convert(result.file, id);
 
-        if (result) {
-          file = result.file;
-          title = result.title || query;
-        }
+      if (!audio) {
+        throw new Error("AUDIO PROCESSING FAILED");
       }
 
-      if (!file) {
-        throw new Error("ALL DOWNLOAD SERVERS FAILED");
-      }
-
-      await editLoading(
-        bot,
-        chatId,
-        loading,
-        "<b>🎧 PROCESSING YOUR SONG</b>\n\n<b>🔄 PREPARING TELEGRAM VOICE</b>"
-      );
-
-      const voiceFile = await convertToVoice(file, id);
-
-      if (!voiceFile || !fs.existsSync(voiceFile)) {
-        throw new Error("AUDIO CONVERSION FAILED");
-      }
-
-      const size = fs.statSync(voiceFile).size;
-
-      if (!size || size > MAX) {
-        throw new Error("SONG FILE IS TOO LARGE");
-      }
-
-      await editLoading(
+      await edit(
         bot,
         chatId,
         loading,
         "<b>📤 UPLOADING SONG</b>\n\n<b>🎵 " +
-          escapeHtml(title) +
+          html(result.title) +
           "</b>"
       );
 
-      await bot.sendVoice(chatId, fs.createReadStream(voiceFile), {
-        reply_to_message_id: messageId,
-        caption:
-          "<b>🎧 " +
-          escapeHtml(title) +
-          "</b>\n\n<b>SIYAM HASAN NIZHUM CHAT BOT</b>",
-        parse_mode: "HTML"
-      });
+      if (audio.type === "voice") {
+        await bot.sendVoice(chatId, fs.createReadStream(audio.file), {
+          reply_to_message_id: replyId,
+          caption:
+            "<b>🎧 " +
+            html(result.title) +
+            "</b>\n\n<b>SIYAM HASAN NIZHUM CHAT BOT</b>",
+          parse_mode: "HTML"
+        });
+      } else {
+        await bot.sendAudio(chatId, fs.createReadStream(audio.file), {
+          reply_to_message_id: replyId,
+          title: result.title,
+          performer: "SIYAM HASAN",
+          caption:
+            "<b>🎧 " +
+            html(result.title) +
+            "</b>\n\n<b>SIYAM HASAN NIZHUM CHAT BOT</b>",
+          parse_mode: "HTML"
+        });
+      }
 
-      await removeLoading(bot, chatId, loading);
-    } catch (error) {
-      console.error("SONG ERROR:", error);
+      await remove(bot, chatId, loading);
+    } catch (e) {
+      console.error("SONG ERROR:", e);
 
-      await removeLoading(bot, chatId, loading);
+      await remove(bot, chatId, loading);
 
       await bot.sendMessage(
         chatId,
         "<b>❌ SONG DOWNLOAD FAILED</b>\n\n<b>🎵 " +
-          escapeHtml(query) +
+          html(query) +
           "</b>\n\n<b>⚠️ " +
-          escapeHtml(error.message || "UNKNOWN ERROR") +
+          html(e.message || "UNKNOWN ERROR") +
           "</b>",
         {
-          reply_to_message_id: messageId,
+          reply_to_message_id: replyId,
           parse_mode: "HTML"
         }
       );
@@ -149,284 +118,194 @@ module.exports = {
   }
 };
 
-async function ytdlpDownload(query, id) {
-  const output = path.join(TEMP, id + "_yt.%(ext)s");
+async function downloadSong(query, id) {
+  const sources = [
+    () => david(query, id),
+    () => agatz(query, id),
+    () => dreaded(query, id)
+  ];
 
-  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+  for (const source of sources) {
     try {
-      const result = await exec(
-        "yt-dlp",
-        [
-          "--no-playlist",
-          "--no-warnings",
-          "--ignore-config",
-          "--default-search",
-          "ytsearch1",
-          "--retries",
-          "5",
-          "--fragment-retries",
-          "5",
-          "--extractor-retries",
-          "5",
-          "--socket-timeout",
-          "30",
-          "--max-filesize",
-          "49M",
-          "-x",
-          "--audio-format",
-          "mp3",
-          "--audio-quality",
-          "128K",
-          "--print",
-          "after_move:%(title)s",
-          "-o",
-          output,
-          query
-        ],
-        {
-          timeout: TIMEOUT,
-          maxBuffer: 20 * 1024 * 1024
-        }
-      );
+      const result = await source();
 
-      const file = findFile(id + "_yt");
-
-      if (!file) {
-        await sleep(attempt * 1500);
-        continue;
+      if (result && result.file) {
+        return result;
       }
-
-      const title =
-        result.stdout
-          .trim()
-          .split("\n")
-          .filter(Boolean)
-          .pop() || query;
-
-      if (fs.statSync(file).size > MAX) {
-        safeDelete(file);
-        continue;
-      }
-
-      return {
-        file,
-        title
-      };
     } catch (e) {
-      console.log("YT-DLP ATTEMPT", attempt, e.message);
-      await sleep(attempt * 1500);
+      console.log("SOURCE FAILED:", e.message);
     }
   }
 
   return null;
 }
 
-async function apiDownload(query, id) {
-  const urls = [];
-
-  try {
-    const search = await axios.get(
-      "https://api.davidcyriltech.my.id/search/yt?q=" +
-        encodeURIComponent(query),
-      {
-        timeout: 30000
-      }
-    );
-
-    if (
-      search.data &&
-      Array.isArray(search.data.results) &&
-      search.data.results.length
-    ) {
-      const item = search.data.results[0];
-
-      if (item.url) {
-        urls.push({
-          url: item.url,
-          title: item.title || query
-        });
-      }
+async function david(query, id) {
+  const search = await axios.get(
+    "https://api.davidcyriltech.my.id/search/yt",
+    {
+      params: { q: query },
+      timeout: 30000
     }
-  } catch (e) {
-    console.log("SEARCH API FAILED");
+  );
+
+  const results = search.data && search.data.results;
+
+  if (!Array.isArray(results) || !results.length) {
+    return null;
   }
 
-  if (!urls.length) {
-    try {
-      const direct = await getYtSearchUrl(query);
+  for (const item of results.slice(0, 3)) {
+    if (!item.url) continue;
 
-      if (direct) {
-        urls.push({
-          url: direct.url,
-          title: direct.title || query
-        });
+    try {
+      const r = await axios.get(
+        "https://api.davidcyriltech.my.id/download/ytmp3",
+        {
+          params: { url: item.url },
+          timeout: 60000
+        }
+      );
+
+      const url =
+        r.data &&
+        r.data.result &&
+        r.data.result.download_url;
+
+      if (!url) continue;
+
+      const file = await saveUrl(url, id + "_david");
+
+      if (file) {
+        return {
+          file,
+          title: item.title || query
+        };
       }
     } catch (e) {}
   }
 
-  for (const item of urls) {
-    const providers = [
-      async () => {
-        const r = await axios.get(
-          "https://api.davidcyriltech.my.id/download/ytmp3?url=" +
-            encodeURIComponent(item.url),
-          { timeout: 30000 }
-        );
-
-        return (
-          r.data &&
-          r.data.result &&
-          r.data.result.download_url
-        );
-      },
-
-      async () => {
-        const r = await axios.get(
-          "https://api.agatz.xyz/api/ytmp3?url=" +
-            encodeURIComponent(item.url),
-          { timeout: 30000 }
-        );
-
-        return (
-          r.data &&
-          r.data.data &&
-          r.data.data.downloadUrl
-        );
-      },
-
-      async () => {
-        const r = await axios.get(
-          "https://api.dreaded.site/api/ytdl/audio?url=" +
-            encodeURIComponent(item.url),
-          { timeout: 30000 }
-        );
-
-        return (
-          r.data &&
-          r.data.result &&
-          r.data.result.download
-        );
-      }
-    ];
-
-    for (const provider of providers) {
-      for (let attempt = 1; attempt <= RETRIES; attempt++) {
-        try {
-          const audioUrl = await provider();
-
-          if (!audioUrl) {
-            continue;
-          }
-
-          const file = await downloadFile(
-            audioUrl,
-            id + "_api"
-          );
-
-          if (!file) {
-            continue;
-          }
-
-          return {
-            file,
-            title: item.title
-          };
-        } catch (e) {
-          console.log(
-            "API DOWNLOAD ATTEMPT",
-            attempt,
-            e.message
-          );
-
-          await sleep(attempt * 1000);
-        }
-      }
-    }
-  }
-
   return null;
 }
 
-async function getYtSearchUrl(query) {
-  for (let attempt = 1; attempt <= RETRIES; attempt++) {
+async function agatz(query, id) {
+  const search = await axios.get(
+    "https://api.davidcyriltech.my.id/search/yt",
+    {
+      params: { q: query },
+      timeout: 30000
+    }
+  );
+
+  const results = search.data && search.data.results;
+
+  if (!Array.isArray(results) || !results.length) {
+    return null;
+  }
+
+  for (const item of results.slice(0, 3)) {
+    if (!item.url) continue;
+
     try {
-      const result = await exec(
-        "yt-dlp",
-        [
-          "--no-warnings",
-          "--ignore-config",
-          "--flat-playlist",
-          "--print",
-          "%(id)s|%(title)s",
-          "ytsearch1:" + query
-        ],
+      const r = await axios.get(
+        "https://api.agatz.xyz/api/ytmp3",
         {
-          timeout: 60000,
-          maxBuffer: 5 * 1024 * 1024
+          params: { url: item.url },
+          timeout: 60000
         }
       );
 
-      const line = result.stdout
-        .trim()
-        .split("\n")
-        .filter(Boolean)[0];
+      const url =
+        r.data &&
+        r.data.data &&
+        r.data.data.downloadUrl;
 
-      if (!line) {
-        continue;
+      if (!url) continue;
+
+      const file = await saveUrl(url, id + "_agatz");
+
+      if (file) {
+        return {
+          file,
+          title: item.title || query
+        };
       }
-
-      const index = line.indexOf("|");
-
-      if (index === -1) {
-        continue;
-      }
-
-      const id = line.slice(0, index).trim();
-      const title = line.slice(index + 1).trim();
-
-      if (!id) {
-        continue;
-      }
-
-      return {
-        url: "https://www.youtube.com/watch?v=" + id,
-        title
-      };
-    } catch (e) {
-      await sleep(attempt * 1000);
-    }
+    } catch (e) {}
   }
 
   return null;
 }
 
-async function downloadFile(url, name) {
+async function dreaded(query, id) {
+  const search = await axios.get(
+    "https://api.davidcyriltech.my.id/search/yt",
+    {
+      params: { q: query },
+      timeout: 30000
+    }
+  );
+
+  const results = search.data && search.data.results;
+
+  if (!Array.isArray(results) || !results.length) {
+    return null;
+  }
+
+  for (const item of results.slice(0, 3)) {
+    if (!item.url) continue;
+
+    try {
+      const r = await axios.get(
+        "https://api.dreaded.site/api/ytdl/audio",
+        {
+          params: { url: item.url },
+          timeout: 60000
+        }
+      );
+
+      const url =
+        r.data &&
+        r.data.result &&
+        r.data.result.download;
+
+      if (!url) continue;
+
+      const file = await saveUrl(url, id + "_dreaded");
+
+      if (file) {
+        return {
+          file,
+          title: item.title || query
+        };
+      }
+    } catch (e) {}
+  }
+
+  return null;
+}
+
+async function saveUrl(url, name) {
+  const file = path.join(TEMP, name + ".mp3");
+
   try {
     const response = await axios.get(url, {
       responseType: "stream",
-      timeout: TIMEOUT,
+      timeout: 180000,
       maxContentLength: MAX,
-      maxBodyLength: MAX
+      maxBodyLength: MAX,
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
     });
 
-    const type = getExtension(
-      response.headers["content-type"]
-    );
-
-    const file = path.join(
-      TEMP,
-      name + "." + type
-    );
-
-    let received = 0;
+    const writer = fs.createWriteStream(file);
+    let size = 0;
 
     return await new Promise((resolve, reject) => {
-      const writer = fs.createWriteStream(file);
-
       response.data.on("data", chunk => {
-        received += chunk.length;
+        size += chunk.length;
 
-        if (received > MAX) {
+        if (size > MAX) {
           response.data.destroy();
           writer.destroy();
           safeDelete(file);
@@ -461,94 +340,92 @@ async function downloadFile(url, name) {
       response.data.pipe(writer);
     });
   } catch (e) {
-    console.log("REMOTE DOWNLOAD FAILED:", e.message);
+    safeDelete(file);
     return null;
   }
 }
 
-async function convertToVoice(input, id) {
-  const output = path.join(
-    TEMP,
-    id + "_voice.ogg"
-  );
+async function convert(input, id) {
+  const ffmpeg = require("child_process").execFile;
+  const voice = path.join(TEMP, id + "_voice.ogg");
+  const mp3 = path.join(TEMP, id + "_final.mp3");
 
-  for (let attempt = 1; attempt <= RETRIES; attempt++) {
-    try {
-      await exec(
-        "ffmpeg",
-        [
-          "-y",
-          "-i",
-          input,
-          "-vn",
-          "-map_metadata",
-          "-1",
-          "-c:a",
-          "libopus",
-          "-b:a",
-          "64k",
-          "-vbr",
-          "on",
-          "-application",
-          "audio",
-          output
-        ],
-        {
-          timeout: TIMEOUT,
-          maxBuffer: 10 * 1024 * 1024
-        }
-      );
+  try {
+    await run(ffmpeg, "ffmpeg", [
+      "-y",
+      "-i",
+      input,
+      "-vn",
+      "-map_metadata",
+      "-1",
+      "-c:a",
+      "libopus",
+      "-b:a",
+      "48k",
+      voice
+    ]);
 
-      if (!fs.existsSync(output)) {
-        continue;
-      }
-
-      const size = fs.statSync(output).size;
-
-      if (!size || size > MAX) {
-        safeDelete(output);
-        continue;
-      }
-
-      return output;
-    } catch (e) {
-      console.log(
-        "FFMPEG ATTEMPT",
-        attempt,
-        e.message
-      );
-
-      await sleep(attempt * 1000);
+    if (fs.existsSync(voice) && fs.statSync(voice).size <= MAX) {
+      return {
+        file: voice,
+        type: "voice"
+      };
     }
+  } catch (e) {
+    console.log("VOICE FAILED:", e.message);
+  }
+
+  try {
+    await run(ffmpeg, "ffmpeg", [
+      "-y",
+      "-i",
+      input,
+      "-vn",
+      "-map_metadata",
+      "-1",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "96k",
+      mp3
+    ]);
+
+    if (fs.existsSync(mp3) && fs.statSync(mp3).size <= MAX) {
+      return {
+        file: mp3,
+        type: "audio"
+      };
+    }
+  } catch (e) {
+    console.log("MP3 FAILED:", e.message);
   }
 
   return null;
 }
 
-function findFile(prefix) {
-  try {
-    const files = fs.readdirSync(TEMP);
-
-    const match = files.find(
-      file =>
-        file.startsWith(prefix) &&
-        !file.endsWith(".part") &&
-        !file.endsWith(".ytdl")
+function run(execFile, command, args) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      command,
+      args,
+      {
+        timeout: 180000,
+        maxBuffer: 20 * 1024 * 1024
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({ stdout, stderr });
+        }
+      }
     );
-
-    return match
-      ? path.join(TEMP, match)
-      : null;
-  } catch (e) {
-    return null;
-  }
+  });
 }
 
 function cleanup(id) {
   try {
-    const files = fs.readdirSync(TEMP);
-
-    for (const file of files) {
+    for (const file of fs.readdirSync(TEMP)) {
       if (file.startsWith(id)) {
         safeDelete(path.join(TEMP, file));
       }
@@ -558,68 +435,39 @@ function cleanup(id) {
 
 function safeDelete(file) {
   try {
-    if (fs.existsSync(file)) {
+    if (file && fs.existsSync(file)) {
       fs.unlinkSync(file);
     }
   } catch (e) {}
 }
 
-async function editLoading(
-  bot,
-  chatId,
-  loading,
-  text
-) {
-  if (!loading) return;
+async function edit(bot, chatId, message, text) {
+  if (!message) return;
 
   try {
-    await bot.editMessageText(
-      chatId,
-      loading.message_id,
-      text,
-      {
-        parse_mode: "HTML"
-      }
-    );
+    await bot.editMessageText(text, {
+      chat_id: chatId,
+      message_id: message.message_id,
+      parse_mode: "HTML"
+    });
   } catch (e) {}
 }
 
-async function removeLoading(
-  bot,
-  chatId,
-  loading
-) {
-  if (!loading) return;
+async function remove(bot, chatId, message) {
+  if (!message) return;
 
   try {
     await bot.deleteMessage(
       chatId,
-      loading.message_id
+      message.message_id
     );
   } catch (e) {}
 }
 
-function getExtension(contentType) {
-  if (!contentType) return "mp3";
-
-  if (contentType.includes("mpeg")) return "mp3";
-  if (contentType.includes("mp4")) return "m4a";
-  if (contentType.includes("ogg")) return "ogg";
-  if (contentType.includes("opus")) return "opus";
-  if (contentType.includes("webm")) return "webm";
-  if (contentType.includes("aac")) return "aac";
-
-  return "mp3";
-}
-
-function escapeHtml(text) {
+function html(text) {
   return String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
