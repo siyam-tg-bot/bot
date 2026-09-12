@@ -10,9 +10,9 @@ const mahmud = [
 const randomStickerReplies = [
   "🙈 ইশশ! এত মিষ্টি স্টিকার দিচ্ছ কেন?",
   "উম্মাহ! 😘 কি সুন্দর স্টিকার!",
-  "স্টিকার না দিয়ে একটু ভালোবেসে কথা বলো তো! 💖",
-  "বেশি স্টিকার মারলে কিন্তু কামড় দিমু 🤭",
-  "বসের দেওয়া বট আমি, প্রেমে পড়ে গেলাম তো! 🫣"
+  "স্টিকার না দিয়ে একটু ভালোবেসে কথা বলো তো! 💖",
+  "বেশি স্টিকার মারলে কিন্তু কামড় দিমু 🤭",
+  "বসের দেওয়া বট আমি, প্রেমে পড়ে গেলাম তো! 🫣"
 ];
 
 const randomNoPrefixReplies = [
@@ -52,7 +52,7 @@ function filterText(text) {
   let cleanText = text;
   badWords.forEach(word => {
     if (cleanText.toLowerCase().includes(word)) {
-      cleanText = "ছিঃ! ভালো হয়ে যাও, এসব পচা কথা বলতে নেই 🙈";
+      cleanText = "ছিঃ! ভালো হয়ে যাও, এসব পচা কথা বলতে নেই 🙈";
     }
   });
   return cleanText;
@@ -74,11 +74,11 @@ module.exports = {
   config: {
     name: "bby",
     aliases: ["baby", "jan", "janu", "wifey", "bot", "hinata", "hina"],
-    version: "4.0-FINAL",
+    version: "5.0-STABLE",
     author: AUTHOR,
     role: 0,
     shortDescription: "Always Active AI Baby Chatbot",
-    longDescription: "Fast 100% active AI chatbot with no-prefix and auto-reply support",
+    longDescription: "Fast 100% active AI chatbot with no-prefix and single auto-reply support",
     category: "chat",
     guide: "{pn} [text] | reply to message/sticker"
   },
@@ -130,9 +130,10 @@ module.exports = {
         const replyMsg = await fetchAiReply(input);
         return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
       }
+      return;
     }
 
-    // ২. প্রিফিক্স ছাড়া সাধারণ মেসেজে ট্রিগার হলে (No-Prefix Trigger)
+  
     const text = (msg.text || msg.caption || "").toLowerCase().trim();
     if (!text) return;
 
@@ -150,23 +151,6 @@ module.exports = {
       if (!cleanQuery) cleanQuery = text;
 
       const replyMsg = await fetchAiReply(cleanQuery);
-      return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
-    }
-  },
-
-  onReply: async function ({ bot, msg }) {
-    if (!msg || this.config.author !== AUTHOR) return;
-    const chatId = msg.chat.id;
-    const messageId = msg.message_id;
-    
-    if (msg.sticker) {
-      const reply = randomStickerReplies[Math.floor(Math.random() * randomStickerReplies.length)];
-      return bot.sendMessage(chatId, reply, { reply_to_message_id: messageId });
-    }
-
-    const input = (msg.text || msg.caption || "").trim();
-    if (input) {
-      const replyMsg = await fetchAiReply(input);
       return bot.sendMessage(chatId, replyMsg, { reply_to_message_id: messageId });
     }
   }
