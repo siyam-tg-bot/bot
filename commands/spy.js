@@ -5,14 +5,14 @@ const LOCKED_AUTHOR = "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
 module.exports = {
   config: {
     name: "spy",
-    version: "1.5.0",
+    version: "1.5.1",
     author: LOCKED_AUTHOR,
     role: 0,
     countDown: 5,
     shortDescription: "Deep dive into user stats",
-    longDescription: "Fetch complete profile details including UID, balance, level, rank, location.",
+    longDescription: "Fetch complete profile details including UID, balance, level, rank.",
     category: "utility",
-    guide: "spy [@mention or reply or UID]"
+    guide: "spy [@mention or reply]"
   },
 
   onStart: async function ({ bot, msg, args, usersData }) {
@@ -28,49 +28,55 @@ module.exports = {
     const requesterID = msg.from.id;
 
     let targetID = requesterID;
+    let targetUser = msg.from;
 
     if (msg.reply_to_message) {
       targetID = msg.reply_to_message.from.id;
+      targetUser = msg.reply_to_message.from;
     } else if (msg.entities) {
       const mentionEntity = msg.entities.find(e => e.type === "text_mention" || e.type === "mention");
       if (mentionEntity && mentionEntity.user) {
         targetID = mentionEntity.user.id;
+        targetUser = mentionEntity.user;
       }
     }
 
     if (args[0]) {
       const numeric = /^\d+$/.test(args[0]) ? args[0] : null;
-      if (numeric) targetID = numeric;
+      if (numeric) {
+        targetID = numeric;
+        try {
+          const chatMember = await bot.getChatMember(chatId, targetID);
+          if (chatMember && chatMember.user) {
+            targetUser = chatMember.user;
+          }
+        } catch (e) {}
+      }
     }
 
     try {
-      let chatMember;
+      let userRecord = {};
       try {
-        chatMember = await bot.getChatMember(chatId, targetID);
+        if (usersData && typeof usersData.get === "function") {
+          userRecord = await usersData.get(targetID) || {};
+        }
       } catch (e) {}
 
-      const userRecord = await usersData.get(targetID).catch(() => ({}));
-      const requesterRecord = await usersData.get(requesterID).catch(() => ({}));
-      const requesterName = requesterRecord.name || msg.from.first_name || "Friend";
+      let requesterRecord = {};
+      try {
+        if (usersData && typeof usersData.get === "function") {
+          requesterRecord = await usersData.get(requesterID) || {};
+        }
+      } catch (e) {}
 
-      const targetUser = chatMember ? chatMember.user : msg.from;
+      const requesterName = requesterRecord.name || msg.from.first_name || "Friend";
       const fullName = `${targetUser.first_name || ""} ${targetUser.last_name || ""}`.trim() || "N/A";
       const username = targetUser.username ? `@${targetUser.username}` : "None";
 
       const balance = userRecord.money || 0;
       const xp = userRecord.exp || 0;
       const lvl = Math.floor(Math.sqrt(xp) * 0.1);
-
-      let allUsers = [];
-      try {
-        allUsers = await usersData.getAll();
-      } catch (e) {}
-
-      const rankIdx = allUsers
-        .filter(u => typeof u.money === "number")
-        .sort((a, b) => b.money - a.money)
-        .findIndex(u => u.userID === targetID);
-      const rank = rankIdx !== -1 ? `#${rankIdx + 1}` : "—";
+      const rank = "—";
 
       let avatarUrl = null;
       try {
