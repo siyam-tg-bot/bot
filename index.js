@@ -119,15 +119,6 @@ function loadAllModules() {
 
 loadAllModules();
 
-[commandsDir, privateDir].forEach(dir => {
-    fs.watch(dir, (eventType, filename) => {
-        if (filename && filename.endsWith('.js')) {
-            console.log(`Changes detected in ${path.basename(dir)}. Reloading...`);
-            loadAllModules();
-        }
-    });
-});
-
 function getUserRole(userId) {
     if (userId === config.ownerID || (config.adminIDs && config.adminIDs.includes(userId))) {
         return 2;
@@ -140,25 +131,9 @@ function getUserRole(userId) {
 
 const activeReplies = new Map();
 
-bot.on('callback_query', async (query) => {
-    const data = query.data;
-    if (!data) return;
-
-    try {
-        if (data.startsWith('cmd_')) {
-            const cmdManager = commands.get('cmd');
-            if (cmdManager && typeof cmdManager.handleCallback === 'function') {
-                return await cmdManager.handleCallback(bot, query);
-            }
-        }
-    } catch (err) {
-        console.error('Callback Query Error:', err.message);
-    }
-});
-
 bot.on('message', async (msg) => {
     try {
-        if (!msg) return;
+        if (!msg || !msg.chat) return;
 
         const text = msg.text ? msg.text.trim() : '';
         const chatId = msg.chat.id;
@@ -190,7 +165,6 @@ bot.on('message', async (msg) => {
             }
         }
 
-        let eventHandled = false;
         if (fs.existsSync(eventsDir)) {
             const eventFiles = fs.readdirSync(eventsDir).filter(file => file.endsWith('.js'));
             for (const file of eventFiles) {
@@ -201,8 +175,7 @@ bot.on('message', async (msg) => {
                     if (event.onStart && typeof event.onStart === 'function') {
                         await event.onStart({ bot, msg, userRole });
                     } else if (event.execute && typeof event.execute === 'function') {
-                        const handled = await event.execute(bot, msg, userRole);
-                        if (handled) eventHandled = true;
+                        await event.execute(bot, msg, userRole);
                     }
                 } catch (err) {
                     console.error(`Event ${file} Error:`, err.message);
@@ -210,26 +183,18 @@ bot.on('message', async (msg) => {
             }
         }
 
-        if (config.whitelistMode && config.whitelistMode.enable) {
-            const isWhitelisted = config.whitelistMode.whiteListIds && config.whitelistMode.whiteListIds.includes(String(userId));
-            if (!isWhitelisted && userRole < 2) {
-                return bot.sendMessage(chatId, 'এই বটটি বর্তমানে হোয়াইটলিস্ট মোডে রয়েছে। আপনার এটি ব্যবহারের পারমিশন নেই।');
-            }
-        }
-
         if (!text) return;
 
         const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
-        if (text === currentPrefix) {
+        if (text === currentPrefix || text === '/start' || (currentPrefix && text === `${currentPrefix}start`)) {
+            if (text === '/start' || (currentPrefix && text === `${currentPrefix}start`)) {
+                return bot.sendMessage(
+                    chatId,
+                    `Welcome to Telegram Bot!\n\nAll Commands: ${currentPrefix}help\nAdmin Control: ${currentPrefix}cmd`
+                );
+            }
             return;
-        }
-
-        if (text === '/start' || (currentPrefix && text === `${currentPrefix}start`)) {
-            return bot.sendMessage(
-                chatId,
-                `Welcome to Telegram Bot!\n\nAll Commands: ${currentPrefix}help\nAdmin Control: ${currentPrefix}cmd`
-            );
         }
 
         let isCommand = false;
@@ -256,13 +221,7 @@ bot.on('message', async (msg) => {
                 const requiredRole = command.role !== undefined ? command.role : (command.config?.role !== undefined ? command.config.role : 0);
 
                 if (userRole < requiredRole) {
-                    let errorMsg = '';
-                    if (requiredRole >= 2) {
-                        errorMsg = getLangText('handlerEvents.onlyAdminBot2', [actualCommandName]) || `ONLY MY BOSS CAN USE THE COMMAND "${actualCommandName}"`;
-                    } else {
-                        errorMsg = getLangText('handlerEvents.onlyAdmin', [actualCommandName]) || `ONLY ADMINISTRATORS CAN USE THE COMMAND "${actualCommandName}"`;
-                    }
-                    return bot.sendMessage(chatId, errorMsg);
+                    return bot.sendMessage(chatId, `ONLY ADMINISTRATORS CAN USE THE COMMAND "${actualCommandName}"`);
                 }
 
                 try {
@@ -279,6 +238,36 @@ bot.on('message', async (msg) => {
                                 let str = command.langs.en[key];
                                 placeholders.forEach((val, idx) => {
                                     str = str.replace(new RegExp(`%${idx + 1}`, 'g'), val);
+                                });
+                                return str;
+                            }
+                            return key;
+                        },
+                        usersData: {
+                            getName: async (uid) => {
+                                try {
+                                    const chatMember = await bot.getChatMember(chatId, uid);
+                                    return chatMember.user.first_name || "User";
+                                } catch {
+                                    return "User";
+                                }
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error(`Error executing ${actualCommandName}:`, error);
+                    return bot.sendMessage(chatId, 'কমান্ডটি রান করতে সমস্যা হয়েছে!');
+                }
+            } else {
+                return bot.sendMessage(chatId, `COMMAND "${inputCommand}" DOES NOT EXIST, TYPE ${currentPrefix}help TO SEE ALL AVAILABLE COMMANDS`);
+            }
+        }
+    } catch (globalMsgErr) {
+        console.error("Global Message Processing Error:", globalMsgErr.message);
+    }
+});
+
+console.log('Telegram Bot Engine Active and Ready!');xp(`%${idx + 1}`, 'g'), val);
                                 });
                                 return str;
                             }
