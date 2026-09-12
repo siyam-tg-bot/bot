@@ -3,7 +3,7 @@ const config = require("../config");
 
 const AUTHOR = "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
 const COMMAND_NAME = "downloader";
-const API_TIMEOUT = 15000;
+const API_TIMEOUT = 20000;
 
 function extractUrl(text) {
   if (!text) return null;
@@ -11,22 +11,28 @@ function extractUrl(text) {
   return match ? match[0].replace(/[),.!?]+$/, "") : null;
 }
 
+function convertToBold(text) {
+  const charMap = {
+    'A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌','N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙',
+    'a':'𝐚','b':'𝐛','c':'𝐜','d':'𝐝','e':'𝐞','f':'𝐟','g':'𝐠','h':'𝐡','i':'𝐢','j':'𝐣','k':'𝐤','l':'𝐥','m':'𝐦','n':'𝐧','o':'𝐨','p':'𝐩','q':'𝐪','r':'𝐫','s':'𝐬','t':'𝐭','u':'𝐮','v':'𝐯','w':'𝐰','x':'𝐱','y':'𝐲','z':'𝐳',
+    '0':'𝟎','1':'𝟏','2':'𝟐','3':'𝟑','4':'𝟒','5':'𝟓','6':'𝟔','7':'𝟕','8':'𝟖','9':'𝟗'
+  };
+  return String(text).split('').map(c => charMap[c] || c).join('');
+}
+
 function findVideoUrl(data) {
   if (!data) return null;
   const possibleKeys = [
     "video", "videoUrl", "video_url", "download", "downloadUrl", 
     "download_url", "url", "link", "play", "playUrl", "play_url", 
-    "high", "hd", "hdplay", "nowm", "noWatermark", "no_watermark", "media"
+    "high", "hd", "hdplay", "nowm", "noWatermark", "no_watermark", "media", "mp4"
   ];
 
   function search(obj, depth = 0) {
     if (!obj || depth > 7) return null;
 
     if (typeof obj === "string") {
-      if (/^https?:\/\//i.test(obj) && /\.(mp4|m3u8|mov|webm)(\?|$)/i.test(obj)) {
-        return obj;
-      }
-      if (/^https?:\/\//i.test(obj) && (obj.includes(".mp4") || obj.includes("video") || obj.includes("download"))) {
+      if (/^https?:\/\//i.test(obj) && (obj.includes(".mp4") || obj.includes("video") || obj.includes("download") || obj.includes("googlevideo") || obj.includes("cdn"))) {
         return obj;
       }
       return null;
@@ -59,78 +65,83 @@ function findVideoUrl(data) {
 }
 
 function findTitle(data) {
-  if (!data || typeof data !== "object") return "Downloaded Video";
+  if (!data || typeof data !== "object") return "DOWNLOADED VIDEO";
   const keys = ["title", "caption", "description", "name"];
 
   for (const key of keys) {
     if (typeof data[key] === "string" && data[key].trim()) {
-      return data[key].trim().slice(0, 900);
+      return data[key].trim().slice(0, 300);
     }
   }
 
   if (data.data && typeof data.data === "object") return findTitle(data.data);
   if (data.result && typeof data.result === "object") return findTitle(data.result);
 
-  return "Downloaded Video";
+  return "DOWNLOADED VIDEO";
 }
 
-async function callApi(apiUrl) {
-  const response = await axios.get(apiUrl, {
-    timeout: API_TIMEOUT,
-    maxRedirects: 5,
-    validateStatus: status => status >= 200 && status < 400,
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
-      "Accept": "application/json,text/plain,*/*"
+async function tryDownload(targetUrl) {
+  const encoded = encodeURIComponent(targetUrl);
+  
+  const downloadTasks = [
+    async () => {
+      const res = await axios.post("https://api.cobalt.tools/api/json", { url: targetUrl }, {
+        headers: { "Accept": "application/json", "Content-Type": "application/json" },
+        timeout: API_TIMEOUT
+      });
+      if (res.data && res.data.url) {
+        return { videoUrl: res.data.url, title: "MEDIA DOWNLOADED", api: "COBALT" };
+      }
+      return null;
+    },
+    async () => {
+      const res = await axios.get(`https://betadash-search-download.vercel.app/dl?url=${encoded}`, { timeout: API_TIMEOUT });
+      const videoUrl = findVideoUrl(res.data);
+      if (videoUrl) {
+        return { videoUrl, title: findTitle(res.data), api: "BETADASH" };
+      }
+      return null;
+    },
+    async () => {
+      const res = await axios.get(`https://mahmudx7-api.vercel.app/api/alldl?url=${encoded}`, { timeout: API_TIMEOUT });
+      const videoUrl = findVideoUrl(res.data);
+      if (videoUrl) {
+        return { videoUrl, title: findTitle(res.data), api: "MAHMUD-SERVER" };
+      }
+      return null;
+    },
+    async () => {
+      const res = await axios.get(`https://www.tikwm.com/api/?url=${encoded}`, { timeout: API_TIMEOUT });
+      if (res.data && res.data.data && res.data.data.play) {
+        const playUrl = res.data.data.play.startsWith("http") ? res.data.data.play : `https://www.tikwm.com${res.data.data.play}`;
+        return { videoUrl: playUrl, title: res.data.data.title || "TIKTOK VIDEO", api: "TIKWM" };
+      }
+      return null;
     }
-  });
-  return response.data;
-}
-
-async function tryDownload(url) {
-  const encoded = encodeURIComponent(url);
-  const apis = [
-    { name: "TiklyDown", url: `https://api.tiklydown.eu.org/api/download?url=${encoded}` },
-    { name: "Ruhend", url: `https://ruhend-api.onrender.com/api/alldown?url=${encoded}` },
-    { name: "SnapTik", url: `https://api.snaptik.app/download?url=${encoded}` },
-    { name: "TikWM", url: `https://www.tikwm.com/api/?url=${encoded}` },
-    { name: "TikMate", url: `https://api.tikmate.app/api/download?url=${encoded}` },
-    { name: "SaveTik", url: `https://savetik.co/api/download?url=${encoded}` }
   ];
 
-  let lastError = null;
-
-  for (const api of apis) {
+  for (const task of downloadTasks) {
     try {
-      const data = await callApi(api.url);
-      const videoUrl = findVideoUrl(data);
-
-      if (videoUrl) {
-        return {
-          videoUrl,
-          title: findTitle(data),
-          api: api.name
-        };
-      }
-    } catch (error) {
-      lastError = error;
+      const result = await task();
+      if (result && result.videoUrl) return result;
+    } catch (e) {
       continue;
     }
   }
 
-  throw new Error(lastError ? lastError.message : "All downloader APIs failed.");
+  throw new Error("ALL DOWNLOAD SERVERS FAILED");
 }
 
 module.exports = {
   name: COMMAND_NAME,
   aliases: ["autodl", "dl", "download"],
-  version: "3.0.0",
+  version: "3.1.0",
   author: AUTHOR,
   role: 0,
   category: "media",
   shortDescription: "Auto downloader for social media videos",
   longDescription: "Downloads videos automatically from Facebook, TikTok, Instagram & YouTube links.",
-  guide: "{pn} [video link]",
+  guide: "downloader [video link]",
 
   execute: async (bot, msg, args) => {
     if (module.exports.author !== AUTHOR || module.exports.name !== COMMAND_NAME) {
@@ -144,39 +155,47 @@ module.exports = {
     const url = extractUrl(messageText);
     if (!url) return;
 
+    let botUsername = "SiyamTgBot";
+    try {
+      const me = await bot.getMe();
+      if (me && me.username) {
+        botUsername = me.username;
+      }
+    } catch (e) {
+      botUsername = config.botUsername || "SiyamTgBot";
+    }
+
+    const ownerUsername = config.ownerUsername || "ri_siyam";
+
     let loadingMsg;
     try {
       loadingMsg = await bot.sendMessage(
         chatId,
-        "⏳ তথ্য সংগ্রহ করা হচ্ছে...",
+        `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+───────────────
+⏳ 𝐅𝐄𝐓𝐂𝐇𝐈𝐍𝐆 𝐌𝐄𝐃𝐈𝐀 𝐈𝐍𝐅𝐎...
+───────────────
+⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`,
         { reply_to_message_id: messageId }
       );
-    } catch (e) {
-      console.error("Loading Message Error:", e.message);
-    }
+    } catch (e) {}
 
     try {
-      let botUsername = config.botUsername || "SiyamSM_2026Bot";
-      try {
-        const me = await bot.getMe();
-        botUsername = me.username;
-      } catch (e) {}
-
       const result = await tryDownload(url);
       const videoUrl = result.videoUrl;
-      const title = result.title || "Downloaded Video";
+      const title = result.title || "DOWNLOADED VIDEO";
       const apiName = result.api;
 
-      const safeTitle = String(title).replace(/[*_`[\]]/g, "").slice(0, 500);
+      const boldTitle = convertToBold(title.slice(0, 100));
+      const boldServer = convertToBold(apiName);
 
-      const captionText = 
-`  𝗢𝗪𝗡𝗘𝗥 𝗦𝗜𝗬𝗔𝗠-𝗛𝗔𝗦𝗔𝗡
+      const captionText = `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
-» 🎬 𝗧𝗜𝗧𝗟𝗘: ${safeTitle}
-» ⚡ 𝗦𝗘𝗥𝗩𝗘𝗥: ${apiName}
-» 🤖 𝗕𝗢𝗧 𝗡𝗔𝗠𝗘: @${botUsername}
+🎬 𝐓𝐈𝐓𝐋𝐄: ${boldTitle}
+⚡ 𝐒𝐄𝐑𝐕𝐄𝐑: ${boldServer}
+🤖 𝐁𝐎𝐓: @${botUsername}
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑`;
+⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
 
       const replyMarkup = {
         inline_keyboard: [
@@ -185,7 +204,7 @@ module.exports = {
             { text: "📜 𝐂𝐌𝐃 𝐋𝐈𝐒𝐓", callback_data: "cmd_list" }
           ],
           [
-            { text: "👑 𝐎𝐖𝐍𝐄𝗥", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
+            { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${ownerUsername}` }
           ]
         ]
       };
@@ -198,21 +217,27 @@ module.exports = {
       });
 
       if (loadingMsg) {
-        await bot.deleteMessage(chatId, loadingMsg.message_id);
+        try {
+          await bot.deleteMessage(chatId, loadingMsg.message_id);
+        } catch (e) {}
       }
 
     } catch (err) {
-      console.error("Downloader Error:", err.message);
-
       if (loadingMsg) {
         try {
           await bot.deleteMessage(chatId, loadingMsg.message_id);
         } catch (e) {}
       }
 
+      const errorText = `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+───────────────
+❌ 𝐅𝐀𝐈𝐋𝐄𝐃 𝐓𝐎 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃 𝐕𝐈𝐃𝐄𝐎
+───────────────
+⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
+
       return bot.sendMessage(
         chatId,
-        `❌ ভিডিও ডাউনলোড করতে সমস্যা হয়েছে!\nএরর: ${err.message}`,
+        errorText,
         { reply_to_message_id: messageId }
       );
     }
