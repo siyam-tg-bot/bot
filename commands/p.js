@@ -1,7 +1,7 @@
 module.exports = { 
   config: { 
     name: "p", 
-    version: "3.1", 
+    version: "3.2", 
     author: "Badhon", 
     countDown: 5, 
     role: 2, 
@@ -84,6 +84,7 @@ module.exports = {
       try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) {}
 
       return bot.sendMessage(chatId, msgText).then((info) => {
+        if (!global.activeReplies) global.activeReplies = new Map();
         global.activeReplies.set(info.message_id, {
           commandName,
           author: String(msg.from.id),
