@@ -5,10 +5,7 @@ const searchCache = new Map();
 
 const baseApiUrl = async () => {
   try {
-    const res = await axios.get(
-      "https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json",
-      { timeout: 5000 }
-    );
+    const res = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json", { timeout: 5000 });
     return res.data?.mahmud || "https://mahmudx7-api.vercel.app";
   } catch (e) {
     return "https://mahmudx7-api.vercel.app";
@@ -43,10 +40,10 @@ module.exports = {
   category: "media",
   guide: "{pn} <song name>",
 
-  execute: async (bot, msg, argsText) => {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    const input = Array.isArray(argsText) ? argsText.join(" ").trim() : (argsText ? argsText.trim() : "");
+    const input = args.join(" ").trim(); 
 
     let botUsername = config.botUsername || "SiyamSM_2026Bot";
     try {
@@ -64,34 +61,17 @@ module.exports = {
     ];
 
     if (!input) {
-      return bot.sendMessage(
-        chatId,
-        "👉 ব্যবহার: /ytb গানের নাম",
-        {
-          reply_to_message_id: messageId,
-          reply_markup: { inline_keyboard: defaultButtons }
-        }
-      );
+      return bot.sendMessage(chatId, "👉 ব্যবহার: /ytb গানের নাম", { reply_to_message_id: messageId, reply_markup: { inline_keyboard: defaultButtons } });
     }
 
-    const loadingMsg = await bot.sendMessage(
-      chatId,
-      "🔎 ইউটিউব থেকে সার্চ করা হচ্ছে...",
-      { reply_to_message_id: messageId }
-    );
+    const loadingMsg = await bot.sendMessage(chatId, "🔎 ইউটিউব থেকে সার্চ করা হচ্ছে...", { reply_to_message_id: messageId });
 
     try {
-      const data = await fetchWithFallback((base) =>
-        `${base}/api/ytb/search?q=${encodeURIComponent(input)}`
-      );
-
+      const data = await fetchWithFallback((base) => `${base}/api/ytb/search?q=${encodeURIComponent(input)}`);
       const results = data?.results;
 
       if (!results || !results.length) {
-        return bot.editMessageText(
-          `⭕ কোনো ফলাফল পাওয়া যায়নি: ${input}`,
-          { chat_id: chatId, message_id: loadingMsg.message_id }
-        );
+        return bot.editMessageText(`⭕ কোনো ফলাফল পাওয়া যায়নি: ${input}`, { chat_id: chatId, message_id: loadingMsg.message_id });
       }
 
       const topResults = results.slice(0, 6);
@@ -104,37 +84,20 @@ module.exports = {
       listText += "👇 যে গানটি ডাউনলোড করতে চান নিচের বাটনে চাপ দিন:";
 
       const selectionButtons = [
-        [
-          { text: "1️⃣", callback_data: `ytdl_0` },
-          { text: "2️⃣", callback_data: `ytdl_1` },
-          { text: "3️⃣", callback_data: `ytdl_2` }
-        ],
-        [
-          { text: "4️⃣", callback_data: `ytdl_3` },
-          { text: "5️⃣", callback_data: `ytdl_4` },
-          { text: "6️⃣", callback_data: `ytdl_5` }
-        ],
+        [{ text: "1️⃣", callback_data: `ytdl_0` }, { text: "2️⃣", callback_data: `ytdl_1` }, { text: "3️⃣", callback_data: `ytdl_2` }],
+        [{ text: "4️⃣", callback_data: `ytdl_3` }, { text: "5️⃣", callback_data: `ytdl_4` }, { text: "6️⃣", callback_data: `ytdl_5` }],
         ...defaultButtons
       ];
 
-      try {
-        await bot.deleteMessage(chatId, loadingMsg.message_id);
-      } catch (e) {}
+      try { await bot.deleteMessage(chatId, loadingMsg.message_id); } catch (e) {}
 
       const thumbnailUrl = topResults[0].thumbnail || topResults[0].image || `https://img.youtube.com/vi/${topResults[0].id}/hqdefault.jpg`;
 
-      await bot.sendPhoto(chatId, thumbnailUrl, {
-        caption: listText,
-        reply_to_message_id: messageId,
-        reply_markup: { inline_keyboard: selectionButtons }
-      });
+      await bot.sendPhoto(chatId, thumbnailUrl, { caption: listText, reply_to_message_id: messageId, reply_markup: { inline_keyboard: selectionButtons } });
 
     } catch (err) {
       console.error("YTB Search Error:", err.message);
-      await bot.editMessageText(
-        `❌ সমস্যা: ${err.message}`,
-        { chat_id: chatId, message_id: loadingMsg.message_id }
-      );
+      await bot.editMessageText(`❌ সমস্যা: ${err.message}`, { chat_id: chatId, message_id: loadingMsg.message_id });
     }
   },
 
@@ -153,24 +116,16 @@ module.exports = {
     const selectedSong = results[index];
     await bot.answerCallbackQuery(query.id, { text: `⬇️ ${selectedSong.title} ডাউনলোড শুরু হচ্ছে...` });
 
-    // বাটনে চাপ দেয়ার পর আগের ছবি সম্বলিত সার্চ মেসেজটি সাথে সাথে ডিলিট হবে
-    try {
-      await bot.deleteMessage(chatId, query.message.message_id);
-    } catch (e) {}
+    try { await bot.deleteMessage(chatId, query.message.message_id); } catch (e) {}
 
     const statusMsg = await bot.sendMessage(chatId, `⏳ ডাউনলোড করা হচ্ছে: ${selectedSong.title}`);
 
     try {
-      const videoData = await fetchWithFallback((base) =>
-        `${base}/api/ytb/get?id=${selectedSong.id}&type=audio`
-      );
-
+      const videoData = await fetchWithFallback((base) => `${base}/api/ytb/get?id=${selectedSong.id}&type=audio`);
       const downloadLink = videoData?.data?.downloadLink || videoData?.downloadLink;
       if (!downloadLink) throw new Error("ডাউনলোড লিঙ্ক পাওয়া যায়নি!");
 
-      try {
-        await bot.deleteMessage(chatId, statusMsg.message_id);
-      } catch (e) {}
+      try { await bot.deleteMessage(chatId, statusMsg.message_id); } catch (e) {}
 
       let botUsername = config.botUsername || "SiyamSM_2026Bot";
       try {
@@ -179,30 +134,19 @@ module.exports = {
       } catch (e) {}
 
       const ownerUsername = config.ownerUsername || "ri_siyam";
-
       const caption = `🎵 ${selectedSong.title}\n⏱ সময়: ${selectedSong.time || "N/A"}\n\n👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n🧚‍♀️ 𝐍𝐈𝐉𝐇𝐔𝐌 𝐂𝐇𝐀𝐓𝐁𝐎𝐓`;
 
       const replyMarkup = {
         inline_keyboard: [
-          [
-            { text: "𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${botUsername}?startgroup=true` },
-            { text: "𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${ownerUsername}` }
-          ]
+          [{ text: "𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${botUsername}?startgroup=true` }, { text: "𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${ownerUsername}` }]
         ]
       };
 
-      await bot.sendAudio(chatId, downloadLink, {
-        caption: caption,
-        title: selectedSong.title,
-        reply_markup: replyMarkup
-      });
+      await bot.sendAudio(chatId, downloadLink, { caption: caption, title: selectedSong.title, reply_markup: replyMarkup });
 
     } catch (err) {
       console.error("YTB Download Error:", err.message);
-      await bot.editMessageText(
-        `❌ ডাউনলোড করতে সমস্যা হয়েছে: ${err.message}`,
-        { chat_id: chatId, message_id: statusMsg.message_id }
-      );
+      await bot.editMessageText(`❌ ডাউনলোড করতে সমস্যা হয়েছে: ${err.message}`, { chat_id: chatId, message_id: statusMsg.message_id });
     }
   }
 };
