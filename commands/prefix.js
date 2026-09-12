@@ -3,11 +3,13 @@ const config = require("../config");
 module.exports = {
   name: "prefix",
   aliases: ["pfx", "পোল"],
-  version: "1.0.7",
+  version: "1.0.8",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "system",
   usePrefix: false,
+  noPrefix: true,
+  hasPrefix: false,
   shortDescription: "Shows current bot prefix and system info",
   longDescription: "Displays the active prefix, total loaded commands, and status with interactive buttons.",
   guide: "prefix",
@@ -56,7 +58,7 @@ module.exports = {
 📊 𝐓𝐎𝐓𝐀𝐋 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒: ${boldTotalCmds}
 ⚡ 𝐒𝐓𝐀𝐓𝐔𝐒: 𝐎𝐍𝐋𝐈𝐍𝐄
 ───────────────
-⚡ 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
+⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
 
     return bot.sendMessage(chatId, responseText, {
       reply_to_message_id: messageId,
