@@ -11,17 +11,15 @@ const fs = require("fs");
 const path = require("path");
 
 module.exports = {
-  config: {
-    name: "ad",
-    version: "1.1",
-    author: hiddenOwner,
-    countDown: 10,
-    role: 0,
-    category: "FUN & GAME",
-    guide: "ad [reply to user or tag]"
-  },
+  name: "ad",
+  version: "1.1",
+  author: hiddenOwner,
+  countDown: 10,
+  role: 0,
+  category: "FUN & GAME",
+  guide: "ad [reply to user or tag]",
 
-  onStart: async function ({ bot, msg, args }) {
+  execute: async (bot, msg, args) => {
     try {
       const chatId = msg.chat.id;
       const messageId = msg.message_id;
@@ -50,7 +48,7 @@ module.exports = {
         responseType: "arraybuffer"
       });
 
-      const cacheFolder = path.join(__dirname, "cache");
+      const cacheFolder = path.join(__dirname, "..", "cache");
 
       if (!fs.existsSync(cacheFolder)) {
         fs.mkdirSync(cacheFolder, { recursive: true });
@@ -63,7 +61,7 @@ module.exports = {
 
       fs.writeFileSync(filePath, res.data);
 
-      await bot.sendPhoto(chatId, filePath, {
+      await bot.sendPhoto(chatId, fs.createReadStream(filePath), {
         caption: "📢কিরে শালা 😁তর এড দিয়া 😂ভাইরাল কইরা দিলাম🐸",
         reply_to_message_id: messageId
       });
