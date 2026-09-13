@@ -109,28 +109,16 @@ bot.on('message', async (msg) => {
         const userRole = getUserRole(userId);
         const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
-        if (!text) return;
-
-        let isCommandOrPrefixed = text.startsWith(currentPrefix);
-        if (!isCommandOrPrefixed && userRole > 0) {
-            const tempArgs = text.split(/ +/);
-            const firstWord = tempArgs[0].toLowerCase();
-            let cleanFirstWord = firstWord.includes('@') ? firstWord.split('@')[0] : firstWord;
-            if (commands.has(cleanFirstWord) || aliases.has(cleanFirstWord)) {
-                isCommandOrPrefixed = true;
-            }
-        }
-
-        if (isCommandOrPrefixed) {
-            if (config.whitelistMode && config.whitelistMode.enable) {
-                if (userRole < 2) {
-                    const whiteListIds = config.whitelistMode.whiteListIds || [];
-                    if (!whiteListIds.includes(userId)) {
-                        return;
-                    }
+        if (config.whitelistMode && config.whitelistMode.enable) {
+            if (userRole < 2) {
+                const whiteListIds = config.whitelistMode.whiteListIds || [];
+                if (!whiteListIds.includes(userId)) {
+                    return;
                 }
             }
         }
+
+        if (!text) return;
 
         if (text === currentPrefix) {
             const helpCommand = currentPrefix + "help";
@@ -150,7 +138,7 @@ bot.on('message', async (msg) => {
         } else {
             if (userRole > 0) {
                 const tempArgs = text.split(/ +/);
-                const firstWord = tempArgs.0.toLowerCase();
+                const firstWord = tempArgs[0].toLowerCase();
                 let cleanFirstWord = firstWord.includes('@') ? firstWord.split('@')[0] : firstWord;
                 if (commands.has(cleanFirstWord) || aliases.has(cleanFirstWord)) {
                     args = tempArgs;
@@ -182,7 +170,7 @@ bot.on('message', async (msg) => {
                         reply_to_message_id: msg.message_id,
                         reply_markup: {
                             inline_keyboard: [
-                                [{ text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }]
+                                [{ text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝗧 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }]
                             ]
                         }
                     });
