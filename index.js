@@ -111,11 +111,23 @@ bot.on('message', async (msg) => {
 
         if (!text) return;
 
-        if (config.whitelistMode && config.whitelistMode.enable) {
-            if (userRole < 2) {
-                const whiteListIds = config.whitelistMode.whiteListIds || [];
-                if (!whiteListIds.includes(userId)) {
-                    return;
+        let isCommandOrPrefixed = text.startsWith(currentPrefix);
+        if (!isCommandOrPrefixed && userRole > 0) {
+            const tempArgs = text.split(/ +/);
+            const firstWord = tempArgs[0].toLowerCase();
+            let cleanFirstWord = firstWord.includes('@') ? firstWord.split('@')[0] : firstWord;
+            if (commands.has(cleanFirstWord) || aliases.has(cleanFirstWord)) {
+                isCommandOrPrefixed = true;
+            }
+        }
+
+        if (isCommandOrPrefixed) {
+            if (config.whitelistMode && config.whitelistMode.enable) {
+                if (userRole < 2) {
+                    const whiteListIds = config.whitelistMode.whiteListIds || [];
+                    if (!whiteListIds.includes(userId)) {
+                        return;
+                    }
                 }
             }
         }
@@ -138,7 +150,7 @@ bot.on('message', async (msg) => {
         } else {
             if (userRole > 0) {
                 const tempArgs = text.split(/ +/);
-                const firstWord = tempArgs[0].toLowerCase();
+                const firstWord = tempArgs.0.toLowerCase();
                 let cleanFirstWord = firstWord.includes('@') ? firstWord.split('@')[0] : firstWord;
                 if (commands.has(cleanFirstWord) || aliases.has(cleanFirstWord)) {
                     args = tempArgs;
