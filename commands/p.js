@@ -1,7 +1,7 @@
 module.exports = {
   name: "p",
-  version: "3.2",
-  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
+  version: "3.4",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝐀𝗡",
   role: 2,
   category: "Admin",
   shortDescription: "Approve or cancel pending group chats",
@@ -25,11 +25,12 @@ module.exports = {
     const body = msg.text ? msg.text.toLowerCase() : "";
     const isAll = body === "-all";
     const isCancel = body.startsWith("c");
-    const list = isAll ? Reply.pending.map((_, i) => i + 1) : body.replace(/^c\s*/, "").split(/\s+/);
+    const rawList = isAll ? Reply.pending.map((_, i) => i + 1) : body.replace(/^c\s*/, "").split(/\s+/);
 
     let count = 0;
+    const approvedChats = [];
 
-    for (const i of list) {
+    for (const i of rawList) {
       const num = parseInt(i);
       if (!isAll && (isNaN(num) || num < 1 || num > Reply.pending.length)) {
         try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) {}
@@ -37,17 +38,23 @@ module.exports = {
       }
 
       const chatItem = Reply.pending[num - 1];
-      if (isCancel) {
-        try {
-          await bot.leaveChat(chatItem.id);
-        } catch (e) {}
-      } else {
-        try {
-          global.telegramPendingChats = global.telegramPendingChats.filter(c => c.id !== chatItem.id);
-          await bot.sendMessage(chatItem.id, "『 👑 𝐄𝐒𝐁-𝐁𝐎𝐓 』\n\n✦ Bot activated and approved successfully!\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪");
-        } catch (e) {}
+      if (chatItem) {
+        approvedChats.push(chatItem.id);
+        if (isCancel) {
+          try {
+            await bot.leaveChat(chatItem.id);
+          } catch (e) {}
+        } else {
+          try {
+            await bot.sendMessage(chatItem.id, "『 👑 𝐒𝐍𝐂-𝐁𝐎𝐓 』\n\n✦ Bot activated and approved successfully!\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪");
+          } catch (e) {}
+        }
+        count++;
       }
-      count++;
+    }
+
+    if (global.telegramPendingChats) {
+      global.telegramPendingChats = global.telegramPendingChats.filter(c => !approvedChats.includes(c.id));
     }
 
     try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) {}
