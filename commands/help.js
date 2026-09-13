@@ -2,8 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../config');
 
-const COMMANDS_PER_PAGE = 5;
-
 function getSortedCommands() {
   const commandsDir = path.join(__dirname);
   const privateDir = path.join(__dirname, '..', 'private');
@@ -30,112 +28,35 @@ function getSortedCommands() {
   return Array.from(cmdSet).sort();
 }
 
-function generateHelpPage(page, botUsername) {
-  const commands = getSortedCommands();
-  const totalCommands = commands.length;
-  const totalPages = Math.ceil(totalCommands / COMMANDS_PER_PAGE) || 1;
-  
-  const currentPage = Math.max(1, Math.min(page, totalPages));
-  const startIndex = (currentPage - 1) * COMMANDS_PER_PAGE;
-  const currentCmds = commands.slice(startIndex, startIndex + COMMANDS_PER_PAGE);
-
-  let text = `━━━━❪👤❫━━━━\n`;
-  currentCmds.forEach((cmd, index) => {
-    const num = startIndex + index + 1;
-    text += `┣⊸ ${num} ✿ /${cmd}\n`;
-  });
-  text += `━━━━❪👤❫━━━━\n\n`;
-  text += `🌿 ★ ESB-BOT ★\n`;
-  text += `Page: ${currentPage}/${totalPages} | Total Cmd: [ ${totalCommands} ]\n`;
-  text += `Dev: ESB-TEAM`;
-
-  const keyboard = [];
-  
-  const prevBtn = currentPage > 1 ? { text: "◀️ Prev", callback_data: `help_page_${currentPage - 1}` } : { text: "⏹️", callback_data: "help_noop" };
-  const pageBtn = { text: `${currentPage}/${totalPages}`, callback_data: "help_noop" };
-  const nextBtn = currentPage < totalPages ? { text: "Next ▶️", callback_data: `help_page_${currentPage + 1}` } : { text: "⏹️", callback_data: "help_noop" };
-
-  keyboard.push([prevBtn, pageBtn, nextBtn]);
-
-  currentCmds.forEach((cmd) => {
-    keyboard.push([{
-      text: `/${cmd}`,
-      switch_inline_query_current_chat: `/${cmd}`
-    }]);
-  });
-
-  keyboard.push([
-    { text: "❌ Close", callback_data: "help_close" }
-  ]);
-
-  return { text, reply_markup: { inline_keyboard: keyboard } };
-}
-
 module.exports = {
   name: "help",
   aliases: ["commands", "menu", "start"],
-  version: "2.1.0",
+  version: "3.0.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
   role: 0,
   category: "general",
-  shortDescription: "Interactive command help menu",
+  shortDescription: "Displays all available commands",
   guide: "help",
 
   execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
 
-    let botUsername = "SiyamSM_2026Bot";
-    try {
-      const me = await bot.getMe();
-      botUsername = me.username;
-    } catch (e) {}
+    const commands = getSortedCommands();
+    const totalCommands = commands.length;
 
-    const { text, reply_markup } = generateHelpPage(1, botUsername);
+    let text = `━━━━❪👤❫━━━━\n`;
+    commands.forEach((cmd, index) => {
+      const num = index + 1;
+      text += `┣⊸ ${num} ✿ /${cmd}\n`;
+    });
+    text += `━━━━❪👤❫━━━━\n\n`;
+    text += `🌿 ★ 𝗘𝗦𝗕-𝗕𝗢𝗧 ★\n`;
+    text += `𝗧𝗢𝗧𝗔𝗟 𝗖𝗠𝗗: [ ${totalCommands} ]\n`;
+    text += `𝗗𝗘𝗩: 𝗘𝗦𝗕-𝗧𝗘𝗔𝗠`;
 
     return bot.sendMessage(chatId, text, {
-      reply_to_message_id: messageId,
-      reply_markup: reply_markup
+      reply_to_message_id: messageId
     });
-  },
-
-  handleCallback: async (bot, query) => {
-    const data = query.data;
-    if (!data.startsWith("help_")) return;
-
-    const chatId = query.message.chat.id;
-    const messageId = query.message.message_id;
-
-    let botUsername = "SiyamSM_2026Bot";
-    try {
-      const me = await bot.getMe();
-      botUsername = me.username;
-    } catch (e) {}
-
-    if (data === "help_close") {
-      try {
-        await bot.deleteMessage(chatId, messageId);
-      } catch (e) {}
-      return bot.answerCallbackQuery(query.id, { text: "Menu closed." });
-    }
-
-    if (data === "help_noop") {
-      return bot.answerCallbackQuery(query.id);
-    }
-
-    if (data.startsWith("help_page_")) {
-      const page = parseInt(data.replace("help_page_", "")) || 1;
-      const { text, reply_markup } = generateHelpPage(page, botUsername);
-
-      try {
-        await bot.editMessageText(text, {
-          chat_id: chatId,
-          message_id: messageId,
-          reply_markup: reply_markup
-        });
-      } catch (e) {}
-
-      return bot.answerCallbackQuery(query.id);
-    }
   }
 };
