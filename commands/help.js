@@ -51,35 +51,16 @@ function generateHelpPage(page, botUsername) {
 
   const keyboard = [];
   
-  // পেজিনেশন রো
-  const navRow = [];
-  if (currentPage > 1) {
-    navRow.text = "◀️ Prev";
-    navRow.callback_data = `help_page_${currentPage - 1}`;
-  } else {
-    navRow.text = "⏹️";
-    navRow.callback_data = "help_noop";
-  }
+  const prevBtn = currentPage > 1 ? { text: "◀️ Prev", callback_data: `help_page_${currentPage - 1}` } : { text: "⏹️", callback_data: "help_noop" };
+  const pageBtn = { text: `${currentPage}/${totalPages}`, callback_data: "help_noop" };
+  const nextBtn = currentPage < totalPages ? { text: "Next ▶️", callback_data: `help_page_${currentPage + 1}` } : { text: "⏹️", callback_data: "help_noop" };
 
-  const pageInfoButton = { text: `${currentPage}/${totalPages}`, callback_data: "help_noop" };
+  keyboard.push([prevBtn, pageBtn, nextBtn]);
 
-  const nextButton = {};
-  if (currentPage < totalPages) {
-    nextButton.text = "Next ▶️";
-    nextButton.callback_data = `help_page_${currentPage + 1}`;
-  } else {
-    nextButton.text = "⏹️";
-    nextButton.callback_data = "help_noop";
-  }
-
-  keyboard.push([navRow, pageInfoButton, nextButton]);
-
-  
   let cmdRow = [];
   currentCmds.forEach((cmd, idx) => {
     cmdRow.push({
       text: `/${cmd}`,
-      
       switch_inline_query_current_chat: `/${cmd}`
     });
     if (cmdRow.length === 2 || idx === currentCmds.length - 1) {
@@ -87,7 +68,7 @@ function generateHelpPage(page, botUsername) {
       cmdRow = [];
     }
   });
-  
+
   keyboard.push([
     { text: "❌ Close", callback_data: "help_close" }
   ]);
@@ -98,8 +79,8 @@ function generateHelpPage(page, botUsername) {
 module.exports = {
   name: "help",
   aliases: ["commands", "menu", "start"],
-  version: "2.0.0",
-  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
+  version: "2.0.1",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝐀𝗡",
   role: 0,
   category: "general",
   shortDescription: "Interactive command help menu",
