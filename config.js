@@ -3,11 +3,11 @@ require('dotenv').config();
 module.exports = {
     botToken: process.env.BOT_TOKEN || '8664273023:AAEu9ICybK8hzbfQNBDNhUR-ADwjreagawI',
     prefix: ',',
-    ownerID: '7683797493', 
+    ownerID: '8442705758', 
     
     adminIDs: [
         '7683797493',
-        '8442705755'
+        '8442705758'
     ],
 
     modIDs: [],
@@ -15,7 +15,7 @@ module.exports = {
     whitelistMode: {
         enable: false,
         whiteListIds: [
-            '8442705755',
+            '8442705758',
             '7683797493'
         ]
     }
