@@ -124,14 +124,17 @@ bot.on('message', async (msg) => {
             hasPrefix = true;
             const withoutPrefix = text.slice(currentPrefix.length).trim();
             args = withoutPrefix.split(/ +/);
-            commandName = args.shift().toLowerCase();
+            let rawCmd = args.shift().toLowerCase();
+            commandName = rawCmd.includes('@') ? rawCmd.split('@')[0] : rawCmd;
         } else {
             if (userRole > 0) {
                 const tempArgs = text.split(/ +/);
                 const firstWord = tempArgs[0].toLowerCase();
-                if (commands.has(firstWord) || aliases.has(firstWord)) {
+                let cleanFirstWord = firstWord.includes('@') ? firstWord.split('@')[0] : firstWord;
+                if (commands.has(cleanFirstWord) || aliases.has(cleanFirstWord)) {
                     args = tempArgs;
-                    commandName = args.shift().toLowerCase();
+                    let rawCmd = args.shift().toLowerCase();
+                    commandName = rawCmd.includes('@') ? rawCmd.split('@')[0] : rawCmd;
                     hasPrefix = true;
                 }
             }
