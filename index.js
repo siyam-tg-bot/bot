@@ -109,7 +109,15 @@ bot.on('message', async (msg) => {
         const userRole = getUserRole(userId);
         const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
-        if (!text) return;
+        for (const command of commands.values()) {
+            if (typeof command.onChat === 'function') {
+                try {
+                    await command.onChat({ bot, msg });
+                } catch (err) {
+                    console.error("onChat Error:", err.message);
+                }
+            }
+        }
 
         if (config.whitelistMode && config.whitelistMode.enable) {
             if (userRole < 2) {
@@ -119,6 +127,8 @@ bot.on('message', async (msg) => {
                 }
             }
         }
+
+        if (!text) return;
 
         if (text === currentPrefix) {
             const helpCommand = currentPrefix + "help";
