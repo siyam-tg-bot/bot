@@ -2,7 +2,7 @@ const database = require('../database');
 
 module.exports = {
   name: "broadcast",
-  aliases: ["bc", "announce"],
+  aliases: ["bc", "allnote"],
   version: "1.0.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝐀𝗡",
   role: 2,
