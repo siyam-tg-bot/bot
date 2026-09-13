@@ -23,11 +23,11 @@ function downloadGif(url, dest) {
 module.exports = {
   name: "help",
   aliases: ["commands", "cmdlist"],
-  version: "6.6",
+  version: "6.7",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   shortDescription: "Show all commands",
-  longDescription: "Interactive command list UI for users and admins",
+  longDescription: "Interactive command list UI with instant clickable trigger buttons",
   category: "system",
   guide: "{pn} [command name]",
 
@@ -39,15 +39,6 @@ module.exports = {
 
     const BOT_USERNAME = config.botUsername || "SiyamSM_2026Bot";
     const OWNER_USERNAME = config.ownerUsername || "ri_siyam";
-
-    const replyMarkup = {
-      inline_keyboard: [
-        [
-          { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
-          { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
-        ]
-      ]
-    };
 
     const categoryFont = (str) =>
       str.split("").map(c => {
@@ -77,8 +68,8 @@ module.exports = {
       if (!cmd) {
         return bot.sendMessage(
           chatId,
-          `❌ **Command '${cmdName}' not found!**\nType \`${prefix}help\` to get system commands list.`,
-          { reply_to_message_id: messageId, parse_mode: "Markdown", reply_markup: replyMarkup }
+          `❌ Command '${cmdName}' not found!\nType ${prefix}help to get system commands list.`,
+          { reply_to_message_id: messageId }
         );
       }
 
@@ -91,20 +82,28 @@ module.exports = {
 `┏━━━━━━━━━━━━━┓
  🧩 𝐂𝐌𝐃 𝐈𝐍𝐅𝐎
 ┗━━━━━━━━━━━━━┛
- ✦ 𝐍𝐚𝐦𝐞     : \`${cmd.name}\`
- ✦ 𝐀𝐥𝐢𝐚𝐬𝐞𝐬  : \`${cmd.aliases?.join(", ") || "None"}\`
+ ✦ 𝐍𝐚𝐦𝐞    : ${cmd.name}
+ ✦ 𝐀𝐥𝐢𝐚𝐬𝐞𝐬  : ${cmd.aliases?.join(", ") || "None"}
  ✦ 𝐂𝐚𝐭𝐞𝐠𝐨𝐫𝐲 : ${categoryFont((cmd.category || "Others").toUpperCase())}
  ✦ 𝐕𝐞𝐫𝐬𝐢𝐨𝐧  : v${cmd.version || "1.0"}
  ✦ 𝐀𝐮𝐭𝐡𝐨𝐫   : ${cmd.author || "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍"}
- ✦ 𝐑𝐨𝐥𝐞     : ${cmd.role !== undefined ? cmd.role : 0}
- ✦ 𝐔𝐬𝐚𝐠𝐞    : \`${prefix}${usage}\`
+ ✦ 𝐑𝐨𝐥𝐞    : ${cmd.role !== undefined ? cmd.role : 0}
+ ✦ 𝐔𝐬𝐚𝐠𝐞    : ${prefix}${usage}
 ━━━━━━━━━━━━━━━
- 📝 ${(cmd.longDescription || cmd.shortDescription || "No detailed description available.")}`;
+ 📝 ${cmd.longDescription || cmd.shortDescription || "No detailed description available."}`;
+
+      const singleReplyMarkup = {
+        inline_keyboard: [
+          [
+            { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
+            { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
+          ]
+        ]
+      };
 
       return bot.sendMessage(chatId, infoMsg, {
-        parse_mode: "Markdown",
         reply_to_message_id: messageId,
-        reply_markup: replyMarkup
+        reply_markup: singleReplyMarkup
       });
     }
 
@@ -123,17 +122,52 @@ module.exports = {
  📜 𝐂𝐌𝐃 𝐇𝐔𝐁
 ┗━━━━━━━━━━━━━┛
  ✍️ 𝐀𝐮𝐭𝐡𝐨𝐫   : 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍
- 🏷️ 𝐕𝐞𝐫𝐬𝐢𝐨𝐧  : v6.6
- 🔧 𝐏𝐫𝐞𝐟𝐢𝐱   : \`${prefix}\` | 📊 **${allCommands ? allCommands.size : 0}** Total Commands
-━━━━━━━━━━━━━━━\n`;
+ 🏷️ 𝐕𝐞𝐫𝐬𝐢𝐨𝐧  : v6.7
+ 🔧 𝐏𝐫𝐞𝐟𝐢𝐱    : ${prefix} | ${allCommands ? allCommands.size : 0} Total Commands
+━━━━━━━━━━━━━━━
+💡 *নিচের যেকোনো কমান্ডের বাটনে ক্লিক করলেই সেটি সাথে সাথে রান বা ট্রিগার হয়ে যাবে!*`;
+
+    // ডাইনামিক ইনলাইন বাটন তৈরি (প্রতিটি কমান্ডের জন্য একটি করে ক্লিকযোগ্য বাটন যা ট্রিগার করবে)
+    const inlineKeyboardRows = [];
 
     for (const cat of Object.keys(categories)) {
       const emoji = categoryEmojis[cat] || "📁";
-      msgText += `\n${emoji} 『 ${categoryFont(cat.toUpperCase())} 』\n`;
-      msgText += categories[cat].sort().map(c => `   ➥ \`${prefix}${c}\``).join("\n") + "\n";
+      const catTitle = `${emoji} 『 ${categoryFont(cat.toUpperCase())} 』`;
+      
+      // ক্যাটাগরি হেডার টেক্সট হিসেবে যোগ করার জন্য
+      msgText += `\n\n${catTitle}\n`;
+
+      const sortedCmds = categories[cat].sort();
+      let row = [];
+
+      for (const c of sortedCmds) {
+        // প্রতিটি কমান্ডের জন্য একটি বাটন তৈরি করা হচ্ছে যার ডাটা হলো `cmd_ট্রিগার_নাম`
+        row.push({
+          text: `${prefix}${c}`,
+          callback_data: `run_cmd_${c}`
+        });
+
+        // প্রতি লাইনে ২টি বাটন করে সাজানোর জন্য
+        if (row.length === 2) {
+          inlineKeyboardRows.push(row);
+          row = [];
+        }
+      }
+
+      if (row.length > 0) {
+        inlineKeyboardRows.push(row);
+      }
     }
 
-    msgText += `\n━━━━━━━━━━━━━━━\n💡 *Type \`${prefix}help <cmd_name>\` for command usage details.*`;
+    // স্থায়ী বট ও ওনার লিংক বাটন নিচে যুক্ত করা হলো
+    inlineKeyboardRows.push([
+      { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
+      { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
+    ]);
+
+    const finalReplyMarkup = {
+      inline_keyboard: inlineKeyboardRows
+    };
 
     const gifURLs = [
       "https://i.imgur.com/Xw6JTfn.gif",
@@ -153,15 +187,13 @@ module.exports = {
       }
       return await bot.sendAnimation(chatId, gifPath, {
         caption: msgText,
-        parse_mode: "Markdown",
         reply_to_message_id: messageId,
-        reply_markup: replyMarkup
+        reply_markup: finalReplyMarkup
       });
     } catch (err) {
       return await bot.sendMessage(chatId, msgText, {
-        parse_mode: "Markdown",
         reply_to_message_id: messageId,
-        reply_markup: replyMarkup
+        reply_markup: finalReplyMarkup
       });
     }
   }
