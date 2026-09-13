@@ -142,6 +142,33 @@ bot.on('message', async (msg) => {
 
         if (!hasPrefix) return;
 
+        if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
+            if (userRole < 2) {
+                const isPending = global.telegramPendingChats && global.telegramPendingChats.some(c => c.id === chatId);
+                if (isPending) {
+                    const groupTitle = msg.chat.title || "Unknown Group";
+                    const notApprovedText = 
+`╭━❮ 𝐒𝐍𝐂-𝐁𝐎𝐓 ❯━╮
+├═━═━═━═━═━═━══━═
+├‣ ❌ 𝗡𝗢𝗧 𝗔𝗣𝗥𝗢𝗩𝗘𝗗
+├‣ 📛 𝗚𝗿𝗼𝘂𝗽: ${groupTitle}
+├‣ 🆔 𝗜𝗗: ${chatId}
+├═━═━═━═━═━═━═━═
+├‣ ⚠️ Approval Needed!
+╰━═━═━═━═━═━═━═━╯`;
+
+                    return bot.sendMessage(chatId, notApprovedText, {
+                        reply_to_message_id: msg.message_id,
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }]
+                            ]
+                        }
+                    });
+                }
+            }
+        }
+
         const actualCommandName = commands.has(commandName) ? commandName : aliases.get(commandName);
 
         if (!actualCommandName || !commands.has(actualCommandName)) {
