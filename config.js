@@ -7,7 +7,7 @@ module.exports = {
     
     adminIDs: [
         7683797493,
-        8442705758, 
+        8888888888, 
         9876543210
     ],
 
@@ -16,7 +16,7 @@ module.exports = {
     whitelistMode: {
         enable: false,
         whiteListIds: [
-            "8442705758"
+            "55555555"
         ]
     }
 };
