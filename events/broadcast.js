@@ -3,8 +3,8 @@ const database = require('../database');
 module.exports = {
   name: "broadcast",
   aliases: ["bc", "announce"],
-  version: "1.0.0",
-  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝐀𝗡",
+  version: "1.0.1",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
   role: 2,
   category: "admin",
   shortDescription: "Broadcasts a message to all saved chats or users in database",
@@ -14,6 +14,8 @@ module.exports = {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
     const broadcastText = args.join(" ");
+
+    await bot.sendMessage(chatId, "⚙️ 𝗕𝗥𝗢𝗔𝗗𝗖𝗔𝗦𝗧 𝗠𝗢𝗗𝗨𝗟𝗘 𝗜𝗦 𝗔𝗖𝗧𝗜𝗩𝗘 𝗔𝗡𝗗 𝗥𝗨𝗡𝗡𝗜𝗡𝗚...", { reply_to_message_id: messageId });
 
     if (!broadcastText) {
       return bot.sendMessage(chatId, "⚠️ 𝗣𝗟𝗘𝗔𝗦𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘 𝗔 𝗠𝗘𝗦𝗦𝗔𝗚𝗘 𝗧𝗢 𝗕𝗥𝗢𝗔𝗗𝗖𝗔𝗦𝗧.", { reply_to_message_id: messageId });
