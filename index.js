@@ -100,6 +100,8 @@ function getUserRole(userId) {
     return 0;
 }
 
+const userRequestCounts = new Map();
+
 bot.on('message', async (msg) => {
     try {
         if (!msg || !msg.chat) return;
@@ -107,36 +109,36 @@ bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         const userId = msg.from ? msg.from.id : 0;
         const userRole = getUserRole(userId);
-        const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
         if (!text) return;
 
-        let args = [];
-        let commandName = '';
-
-        if (text.startsWith(currentPrefix)) {
-            const withoutPrefix = text.slice(currentPrefix.length).trim();
-            args = withoutPrefix.split(/ +/);
-            commandName = args.shift().toLowerCase();
+        const now = Date.now();
+        if (!userRequestCounts.has(userId)) {
+            userRequestCounts.set(userId, { count: 1, startTime: now });
         } else {
-            const tempArgs = text.split(/ +/);
-            const firstWord = tempArgs[0].toLowerCase();
-            if (commands.has(firstWord) || aliases.has(firstWord)) {
-                args = tempArgs;
-                commandName = args.shift().toLowerCase();
+            const userData = userRequestCounts.get(userId);
+            if (now - userData.startTime < 60000) {
+                userData.count++;
+                if (userData.count > 30) {
+                    return bot.sendMessage(chatId, "⚠️ 𝗧𝗢𝗢 𝗠𝗔𝗡𝗬 𝗥𝗘𝗤𝗨𝗘𝗦𝗧𝗦 𝗜𝗡 𝗧𝗛𝗘 𝗟𝗔𝗦𝗧 𝗠𝗜𝗡𝗨𝗧𝗘. 𝗣𝗟𝗘𝗔𝗦𝗘 𝗧𝗥𝗬 𝗔𝗚𝗔𝗜𝗡 𝗟𝗔𝗧𝗘𝗥.");
+                }
             } else {
-                return;
+                userData.count = 1;
+                userData.startTime = now;
             }
         }
 
-        const actualCommandName = commands.has(commandName) ? commandName : aliases.get(commandName);
+        const args = text.split(/ +/);
+        const firstWord = args.shift().toLowerCase();
+
+        const actualCommandName = commands.has(firstWord) ? firstWord : aliases.get(firstWord);
 
         if (actualCommandName && commands.has(actualCommandName)) {
             const command = commands.get(actualCommandName);
             const requiredRole = command.role !== undefined ? command.role : 0;
 
             if (userRole < requiredRole) {
-                return bot.sendMessage(chatId, "MY BOSS SIYAM ONLY");
+                return bot.sendMessage(chatId, "❌ 𝗬𝗢𝗨 𝗗𝗢 𝗡𝗢𝗧 𝗛𝗔𝗩𝗘 𝗣𝗘𝗥𝗠𝗜𝗦𝗦𝗜𝗢𝗡 𝗧𝗢 𝗨𝗦𝗘 𝗧𝗛𝗜𝗦 𝗖𝗢𝗠𝗠𝗔𝗡𝗗!\n\nMY BOSS SIYAM ONLY");
             }
 
             try {
@@ -145,12 +147,19 @@ bot.on('message', async (msg) => {
                 }
             } catch (error) {
                 console.error(`Error executing ${actualCommandName}:`, error);
-                return;
+                return bot.sendMessage(chatId, "❌ 𝗔𝗡 𝗘𝗥𝗥𝗢𝗥 𝗢𝗖𝗖𝗨𝗥𝗥𝗘𝗗:\n\nError executing command!");
+            }
+        } else {
+            if (text.startsWith('/')) {
+                return bot.sendMessage(chatId, "⚠️ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗡𝗢𝗧 𝗙𝗢𝗨𝗡𝗗! 𝗣𝗟𝗘𝗔𝗦𝗘 𝗖𝗛𝗘𝗖𝗞 𝗬𝗢𝗨𝗥 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗢𝗥 𝗧𝗬𝗣𝗘 𝗔𝗩𝗔𝗜𝗟𝗔𝗕𝗟𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦.");
             }
         }
 
     } catch (err) {
         console.error("Global Error:", err.message);
+        try {
+            await bot.sendMessage(msg.chat.id, "❌ 𝗦𝗘𝗥𝗩𝗘𝗥 𝗘𝗥𝗥𝗢𝗥, 𝗣𝗟𝗘𝗔𝗦𝗘 𝗧𝗥𝗬 𝗔𝗚𝗔𝗜𝗡 𝗟𝗔𝗧𝗘𝗥!");
+        } catch (e) {}
     }
 });
 
