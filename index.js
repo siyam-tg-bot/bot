@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 
-// গ্লোবাল ভেরিয়েবল সেটআপ
 global.activeReplies = new Map();
 global.telegramPendingChats = [];
 
@@ -38,12 +37,10 @@ const commandsDir = path.join(__dirname, 'commands');
 const eventsDir = path.join(__dirname, 'events');
 const privateDir = path.join(__dirname, 'private');
 
-// ফোল্ডারগুলো না থাকলে তৈরি করবে
 [commandsDir, eventsDir, privateDir].forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// কমান্ড রেজিস্টার করার ফাংশন
 function registerCommand(command) {
     if (!command) return;
     const cmdName = command.name || command.config?.name;
@@ -63,7 +60,6 @@ function registerCommand(command) {
     }
 }
 
-// সমস্ত মডিউল লোড করার ফাংশন
 function loadAllModules() {
     commands.clear();
     aliases.clear();
@@ -80,10 +76,8 @@ function loadAllModules() {
                     
                     if (label === 'events') {
                         if (typeof moduleExport === 'function') moduleExport(bot);
-                        console.log(`Loaded Event: [${file}]`);
                     } else {
                         registerCommand(moduleExport);
-                        console.log(`Loaded ${label}: [${moduleExport.name || moduleExport.config?.name || file}]`);
                     }
                 } catch (error) {
                     console.error(`Error loading ${file} from ${label}:`, error.message);
@@ -99,7 +93,6 @@ function loadAllModules() {
 
 loadAllModules();
 
-// ইউজারের রোল চেক
 function getUserRole(userId) {
     const idStr = String(userId);
     if (idStr === String(config.ownerID) || (config.adminIDs && config.adminIDs.map(String).includes(idStr))) return 2;
@@ -107,7 +100,6 @@ function getUserRole(userId) {
     return 0;
 }
 
-// মেসেজ ইভেন্ট হ্যান্ডলার
 bot.on('message', async (msg) => {
     try {
         if (!msg || !msg.chat) return;
@@ -117,82 +109,53 @@ bot.on('message', async (msg) => {
         const userRole = getUserRole(userId);
         const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
-        let isCommand = false;
+        if (!text) return;
+
         let commandText = '';
+        const args = text.split(/ +/);
+        const firstWord = args.shift().toLowerCase();
 
-        if (text) {
-            if (text.startsWith('/')) {
-                isCommand = true;
-                commandText = text.slice(1);
-            } else if (currentPrefix !== '' && text.startsWith(currentPrefix)) {
-                isCommand = true;
-                commandText = text.slice(currentPrefix.length);
+        const actualCommandName = commands.has(firstWord) ? firstWord : aliases.get(firstWord);
+
+        if (actualCommandName && commands.has(actualCommandName)) {
+            const command = commands.get(actualCommandName);
+            const requiredRole = command.role !== undefined ? command.role : 0;
+
+            if (userRole < requiredRole) {
+                return bot.sendMessage(chatId, "MY BOSS SIYAM ONLY");
             }
-        }
 
-        // ১. প্রিফিক্স সহ কমান্ড রান করা
-        if (isCommand) {
-            const args = commandText.split(/ +/);
-            const inputCommand = args.shift().toLowerCase();
-
-            if (inputCommand) {
-                const actualCommandName = commands.has(inputCommand) ? inputCommand : aliases.get(inputCommand);
-
-                if (actualCommandName && commands.has(actualCommandName)) {
-                    const command = commands.get(actualCommandName);
-                    const requiredRole = command.role !== undefined ? command.role : (command.config?.role !== undefined ? command.config.role : 0);
-
-                    if (userRole < requiredRole) {
-                        return bot.sendMessage(chatId, `**𝗠𝗬 𝗕𝗢𝗦𝗦 𝗦𝗜𝗬𝗔𝗠 𝗢𝗡𝗟𝗬**`, { parse_mode: "Markdown" });
-                    }
-
-                    try {
-                        if (typeof command.execute === 'function') {
-                            return await command.execute(bot, msg, args);
-                        } else if (typeof command.onStart === 'function') {
-                            const getLang = command.langs && command.langs.en ? (key, val) => {
-                                let txt = command.langs.en[key] || key;
-                                if (val !== undefined) txt = txt.replace('%1', val);
-                                return txt;
-                            } : (key) => key;
-
-                            return await command.onStart({
-                                bot,
-                                msg,
-                                args,
-                                role: userRole,
-                                prefix: currentPrefix,
-                                commandName: actualCommandName,
-                                getLang
-                            });
-                        }
-                    } catch (error) {
-                        console.error(`Error executing ${actualCommandName}:`, error);
-                        return bot.sendMessage(chatId, '⚠️ কমান্ডটি রান করার সময় একটি সমস্যা হয়েছে!');
-                    }
-                } else {
-                    return bot.sendMessage(chatId, `❌ কমান্ডটি পাওয়া যায়নি! সব কমান্ড দেখতে লিখে পাঠান: ${currentPrefix}help`);
-                }
-            }
-        }
-
-        // ২. ব্যাকগ্রাউন্ড লিসেনার (প্রিফিক্স ছাড়া মেসেজ ও বটের মেসেজে রিপ্লাই প্রসেস করার জন্য)
-        for (const command of commands.values()) {
             try {
-                if (typeof command.onChat === 'function') {
-                    await command.onChat({ bot, msg, role: userRole, prefix: currentPrefix });
+                if (typeof command.execute === 'function') {
+                    return await command.execute(bot, msg, args);
                 }
-
-                if (msg.reply_to_message && typeof command.onReply === 'function') {
-                    await command.onReply({ bot, msg, role: userRole, prefix: currentPrefix });
-                }
-            } catch (err) {
-                console.error(`Error executing onChat/onReply in ${command.name || command.config?.name}:`, err.message);
+            } catch (error) {
+                console.error(`Error executing ${actualCommandName}:`, error);
+                return bot.sendMessage(chatId, 'Error executing command!');
             }
         }
 
     } catch (err) {
         console.error("Global Error:", err.message);
+    }
+});
+
+bot.on('callback_query', async (query) => {
+    try {
+        if (bot.commands.has('cmd')) {
+            const cmdModule = bot.commands.get('cmd');
+            if (typeof cmdModule.handleCallback === 'function') {
+                await cmdModule.handleCallback(bot, query);
+            }
+        }
+
+        for (const command of commands.values()) {
+            if (typeof command.onCallbackQuery === 'function') {
+                await command.onCallbackQuery(bot, query);
+            }
+        }
+    } catch (err) {
+        console.error("Callback Query Error:", err.message);
     }
 });
 
