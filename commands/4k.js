@@ -35,19 +35,16 @@ function dslrEnhance(d, level) {
 }
 
 module.exports = {
-  config: {
-    name: "4k",
-    aliases: ["hd", "enhance", "remini", "hdr", "8k"],
-    version: "6.0-DSLR-PRO",
-    author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-    role: 0,
-    shortDescription: "DSLR Beautiful HD",
-    longDescription: "Photo to DSLR Beautiful HD - 5 Levels",
-    category: "image",
-    guide: "{pn} [1-5] (Reply to photo)"
-  },
+  name: "4k",
+  aliases: ["hd", "enhance", "remini", "hdr", "8k"],
+  version: "6.0-DSLR-PRO",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
+  role: 0,
+  shortDescription: "DSLR Beautiful HD",
+  longDescription: "Photo to DSLR Beautiful HD - 5 Levels",
+  category: "image",
 
-  onStart: async function ({ bot, msg, args }) {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
 
