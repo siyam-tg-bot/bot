@@ -20,14 +20,36 @@ function downloadGif(url, dest) {
   });
 }
 
+// ক্যাটাগরি অনুযায়ী মানানসই ইমোজি
+const categoryEmojis = {
+  system: "⚙️",
+  admin: "🛠️",
+  utility: "🧰",
+  fun: "🎮",
+  others: "📁",
+  media: "🎬",
+  adult: "🔥"
+};
+
+const categoryFont = (str) =>
+  str.split("").map(c => {
+    const map = {
+      A:"𝐀",B:"𝐁",C:"𝐂",D:"𝐃",E:"𝐄",F:"𝐅",G:"𝐆",H:"𝐇",
+      I:"𝐈",J:"𝐉",K:"𝐊",L:"𝐋",M:"𝐌",N:"𝐍",O:"𝐎",P:"𝐏",
+      Q:"𝐐",R:"𝐑",S:"𝐒",T:"𝐓",U:"𝐔",V:"𝐕",W:"𝐖",X:"𝐗",
+      Y:"𝐘",Z:"𝐙"
+    };
+    return map[c] || c;
+  }).join("");
+
 module.exports = {
   name: "help",
   aliases: ["commands", "cmdlist"],
-  version: "6.7",
+  version: "7.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
-  shortDescription: "Show all commands",
-  longDescription: "Interactive command list UI with instant clickable trigger buttons",
+  shortDescription: "Show all commands with pagination",
+  longDescription: "Interactive paginated command list UI with working buttons",
   category: "system",
   guide: "{pn} [command name]",
 
@@ -40,25 +62,6 @@ module.exports = {
     const BOT_USERNAME = config.botUsername || "SiyamSM_2026Bot";
     const OWNER_USERNAME = config.ownerUsername || "ri_siyam";
 
-    const categoryFont = (str) =>
-      str.split("").map(c => {
-        const map = {
-          A:"𝐀",B:"𝐁",C:"𝐂",D:"𝐃",E:"𝐄",F:"𝐅",G:"𝐆",H:"𝐇",
-          I:"𝐈",J:"𝐉",K:"𝐊",L:"𝐋",M:"𝐌",N:"𝐍",O:"𝐎",P:"𝐏",
-          Q:"𝐐",R:"𝐑",S:"𝐒",T:"𝐓",U:"𝐔",V:"𝐕",W:"𝐖",X:"𝐗",
-          Y:"𝐘",Z:"𝐙"
-        };
-        return map[c] || c;
-      }).join("");
-
-    const categoryEmojis = {
-      system: "⚙️",
-      admin: "🛠️",
-      utility: "🧰",
-      fun: "🎮",
-      others: "📁"
-    };
-
     if (args && args.length > 0) {
       const cmdName = args[0].toLowerCase();
       const cmd =
@@ -68,7 +71,7 @@ module.exports = {
       if (!cmd) {
         return bot.sendMessage(
           chatId,
-          `❌ Command '${cmdName}' not found!\nType ${prefix}help to get system commands list.`,
+          `❌ Command '${cmdName}' not found!\nType ${prefix}help to get commands list.`,
           { reply_to_message_id: messageId }
         );
       }
@@ -90,110 +93,161 @@ module.exports = {
  ✦ 𝐑𝐨𝐥𝐞    : ${cmd.role !== undefined ? cmd.role : 0}
  ✦ 𝐔𝐬𝐚𝐠𝐞    : ${prefix}${usage}
 ━━━━━━━━━━━━━━━
- 📝 ${cmd.longDescription || cmd.shortDescription || "No detailed description available."}`;
-
-      const singleReplyMarkup = {
-        inline_keyboard: [
-          [
-            { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
-            { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
-          ]
-        ]
-      };
+ 📝 ${cmd.longDescription || cmd.shortDescription || "No description available."}`;
 
       return bot.sendMessage(chatId, infoMsg, {
         reply_to_message_id: messageId,
-        reply_markup: singleReplyMarkup
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
+              { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
+            ]
+          ]
+        }
       });
     }
 
-    const categories = {};
-
+    // সব কমান্ড একটি অ্যারেতে নেওয়া
+    const commandList = [];
     if (allCommands) {
       for (const [name, cmd] of allCommands) {
-        const cat = cmd.category ? cmd.category.toLowerCase() : "others";
-        if (!categories[cat]) categories[cat] = [];
-        categories[cat].push(name);
+        commandList.push({ name, category: cmd.category || "others" });
       }
     }
 
-    let msgText =
+    const ITEMS_PER_PAGE = 4; // প্রতি পেজে ৪টি করে কমান্ড থাকবে
+    const totalPages = Math.ceil(commandList.length / ITEMS_PER_PAGE) || 1;
+    let currentPage = 0;
+
+    const generatePageContent = (page) => {
+      const start = page * ITEMS_PER_PAGE;
+      const end = start + ITEMS_PER_PAGE;
+      const currentItems = commandList.slice(start, end);
+
+      let text = 
 `┏━━━━━━━━━━━━━┓
  📜 𝐂𝐌𝐃 𝐇𝐔𝐁
 ┗━━━━━━━━━━━━━┛
  ✍️ 𝐀𝐮𝐭𝐡𝐨𝐫   : 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍
- 🏷️ 𝐕𝐞𝐫𝐬𝐢𝐨𝐧  : v6.7
- 🔧 𝐏𝐫𝐞𝐟𝐢𝐱    : ${prefix} | ${allCommands ? allCommands.size : 0} Total Commands
-━━━━━━━━━━━━━━━
-💡 *নিচের যেকোনো কমান্ডের বাটনে ক্লিক করলেই সেটি সাথে সাথে রান বা ট্রিগার হয়ে যাবে!*`;
+ 🏷️ 𝐕𝐞𝐫𝐬𝐢𝐨𝐧  : v7.0
+ 🔧 𝐏𝐫𝐞𝐟𝐢𝐱    : ${prefix} | 📊 Total: ${commandList.length}
+ 📄 𝐏𝐚𝐠𝐞     : ${page + 1} / ${totalPages}
+━━━━━━━━━━━━━━━\n`;
 
-    // ডাইনামিক ইনলাইন বাটন তৈরি (প্রতিটি কমান্ডের জন্য একটি করে ক্লিকযোগ্য বাটন যা ট্রিগার করবে)
-    const inlineKeyboardRows = [];
+      const keyboard = [];
 
-    for (const cat of Object.keys(categories)) {
-      const emoji = categoryEmojis[cat] || "📁";
-      const catTitle = `${emoji} 『 ${categoryFont(cat.toUpperCase())} 』`;
-      
-      // ক্যাটাগরি হেডার টেক্সট হিসেবে যোগ করার জন্য
-      msgText += `\n\n${catTitle}\n`;
+      currentItems.forEach((item) => {
+        const emoji = categoryEmojis[item.category.toLowerCase()] || "📌";
+        text += `\n${emoji} ➥ \`${prefix}${item.name}\` (${item.category.toUpperCase()})`;
+        
+        // প্রতিটি কমান্ডের নিজস্ব ক্লিকযোগ্য বাটন (যা সরাসরি কমান্ড রান বা চ্যাটে পাঠাবে)
+        keyboard.push([
+          { text: `${emoji} ${prefix}${item.name}`, callback_data: `run_${item.name}` }
+        ]);
+      });
 
-      const sortedCmds = categories[cat].sort();
-      let row = [];
-
-      for (const c of sortedCmds) {
-        // প্রতিটি কমান্ডের জন্য একটি বাটন তৈরি করা হচ্ছে যার ডাটা হলো `cmd_ট্রিগার_নাম`
-        row.push({
-          text: `${prefix}${c}`,
-          callback_data: `run_cmd_${c}`
-        });
-
-        // প্রতি লাইনে ২টি বাটন করে সাজানোর জন্য
-        if (row.length === 2) {
-          inlineKeyboardRows.push(row);
-          row = [];
-        }
+      // পেজিনেশন নেক্সট এবং ব্যাক বাটন
+      const paginationRow = [];
+      if (page > 0) {
+        paginationRow.push({ text: "⬅️ 𝐁𝐀𝐂𝐊", callback_data: `help_page_${page - 1}` });
+      }
+      if (page < totalPages - 1) {
+        paginationRow.push({ text: "➡️ 𝐍𝐄𝐗𝐓", callback_data: `help_page_${page + 1}` });
       }
 
-      if (row.length > 0) {
-        inlineKeyboardRows.push(row);
+      if (paginationRow.length > 0) {
+        keyboard.push(paginationRow);
       }
-    }
 
-    // স্থায়ী বট ও ওনার লিংক বাটন নিচে যুক্ত করা হলো
-    inlineKeyboardRows.push([
-      { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
-      { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
-    ]);
+      // পার্মানেন্ট ওনার ও গ্রুপ বাটন
+      keyboard.push([
+        { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${BOT_USERNAME}?startgroup=true` },
+        { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${OWNER_USERNAME}` }
+      ]);
 
-    const finalReplyMarkup = {
-      inline_keyboard: inlineKeyboardRows
+      return { text, keyboard };
     };
+
+    const { text: msgText, keyboard: inlineKeyboard } = generatePageContent(currentPage);
 
     const gifURLs = [
       "https://i.imgur.com/Xw6JTfn.gif",
       "https://i.imgur.com/mW0yjZb.gif"
     ];
-
     const randomGifURL = gifURLs[Math.floor(Math.random() * gifURLs.length)];
     const gifFolder = path.join(__dirname, "..", "cache");
 
     if (!fs.existsSync(gifFolder)) fs.mkdirSync(gifFolder, { recursive: true });
-
     const gifPath = path.join(gifFolder, path.basename(randomGifURL));
 
+    let sentMessage;
     try {
       if (!fs.existsSync(gifPath)) {
         await downloadGif(randomGifURL, gifPath);
       }
-      return await bot.sendAnimation(chatId, gifPath, {
+      sentMessage = await bot.sendAnimation(chatId, gifPath, {
         caption: msgText,
+        parse_mode: "Markdown",
         reply_to_message_id: messageId,
-        reply_markup: finalReplyMarkup
+        reply_markup: { inline_keyboard: inlineKeyboard }
       });
     } catch (err) {
-      return await bot.sendMessage(chatId, msgText, {
+      sentMessage = await bot.sendMessage(chatId, msgText, {
+        parse_mode: "Markdown",
         reply_to_message_id: messageId,
-        reply_markup: finalReplyMarkup
+        reply_markup: { inline_keyboard: inlineKeyboard }
+      });
+    }
+
+    // বাটন কাজ করার জন্য মেইন কলব্যাক লিসেনার (Callback Query Handler)
+    if (bot.listenerCount("callback_query") === 0) {
+      bot.on("callback_query", async (callbackQuery) => {
+        const data = callbackQuery.data;
+        const qMsg = callbackQuery.message;
+
+        if (data.startsWith("help_page_")) {
+          const targetPage = parseInt(data.split("_")[2]);
+          const newContent = generatePageContent(targetPage);
+
+          try {
+            await bot.editMessageCaption(newContent.text, {
+              chat_id: qMsg.chat.id,
+              message_id: qMsg.message_id,
+              parse_mode: "Markdown",
+              reply_markup: { inline_keyboard: newContent.keyboard }
+            });
+          } catch (e) {
+            // যদি অ্যানিমেশন না থাকে শুধু টেক্সট এডিট করার জন্য
+            try {
+              await bot.editMessageText(newContent.text, {
+                chat_id: qMsg.chat.id,
+                message_id: qMsg.message_id,
+                parse_mode: "Markdown",
+                reply_markup: { inline_keyboard: newContent.keyboard }
+              });
+            } catch (err) {}
+          }
+          await bot.answerCallbackQuery(callbackQuery.id);
+        } 
+        else if (data.startsWith("run_")) {
+          const cmdToRun = data.replace("run_", "");
+          await bot.answerCallbackQuery(callbackQuery.id, {
+            text: `Running: ${prefix}${cmdToRun}`,
+            show_alert: false
+          });
+
+          // কমান্ড অটো ট্রিগার করার সিমুলেশন (বট নিজে ওই কমান্ডের execute ফাংশন চালাবে)
+          const targetCmd = allCommands.get(cmdToRun);
+          if (targetCmd && typeof targetCmd.execute === "function") {
+            const fakeMsg = {
+              chat: qMsg.chat,
+              message_id: qMsg.message_id,
+              from: callbackQuery.from
+            };
+            targetCmd.execute(bot, fakeMsg, []);
+          }
+        }
       });
     }
   }
