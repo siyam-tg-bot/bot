@@ -43,7 +43,7 @@ module.exports = {
     }
   },
 
-  execute: async (bot, msg, args) => {
+  execute: async function ({ bot, msg, args }) {
     await sendFunnyVideo(bot, msg.chat.id, msg.message_id);
   },
 
@@ -75,7 +75,6 @@ module.exports = {
         response.data.pipe(writer);
 
         writer.on("finish", async () => {
-          
           await bot.sendVideo(chatId, fs.createReadStream(cachePath), {
             caption: `「 ${caption} 」`,
             reply_markup: {
@@ -90,7 +89,7 @@ module.exports = {
               ]
             }
           });
-          fs.unlinkSync(cachePath);
+          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
         });
 
         writer.on("error", (err) => {
@@ -146,10 +145,10 @@ async function sendFunnyVideo(bot, chatId, messageId) {
           ]
         }
       });
-      fs.unlinkSync(cachePath);
+      if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
     });
 
-    writer.on("error", (err) => {
+    writer.on("error", async (err) => {
       console.error(err);
       try {
         await bot.deleteMessage(chatId, loadingMsg.message_id);
