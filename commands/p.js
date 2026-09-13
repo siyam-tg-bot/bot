@@ -1,21 +1,20 @@
-module.exports = { 
-  config: { 
-    name: "p", 
-    version: "3.2", 
-    author: "Badhon", 
-    countDown: 5, 
-    role: 2, 
-    category: "Admin"
-  },
+module.exports = {
+  name: "p",
+  version: "3.2",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
+  role: 2,
+  category: "Admin",
+  shortDescription: "Approve or cancel pending group chats",
+  guide: "p",
 
   langs: { 
     en: { 
-      invalidNumber: "『 𝐄𝐑𝐑𝐎𝐑 』\n\n✦ %1 is not a valid number\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
-      cancelSuccess: "『 𝐂𝐀𝐍𝐂𝐄𝐋𝐋𝐄𝐃 』\n\n✦ Refused %1 chat(s)\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
-      approveSuccess: "『 𝐀𝐏𝐏𝐑𝐎𝐕𝐄𝐃 』\n\n✦ Approved %1 chat(s)\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
-      cantGetPendingList: "『 𝐄𝐑𝐑𝐎𝐑 』\n\n✦ Unable to retrieve pending list\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
-      returnListClean: "『 𝐏𝐄𝐍𝐃𝐈𝐍𝐆 』\n\n✦ No pending chats found\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
-      approveAllSuccess: "『 𝐀𝐏𝐏𝐑𝐎𝐕𝐄𝐃 𝐀𝐋𝐋 』\n\n✦ Approved ALL %1 chats\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪"
+      invalidNumber: "『 𝐄𝐑𝐑𝐎𝐑 』\n\n✦ %1 IS NOT A VALID NUMBER\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
+      cancelSuccess: "『 𝐂𝐀𝐍𝐂𝐄𝐋𝐋𝐄𝐃 』\n\n✦ REFUSED %1 CHAT(S)\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
+      approveSuccess: "『 𝐀𝐏𝐏𝐑𝐎𝐕𝐄𝐃 』\n\n✦ APPROVED %1 CHAT(S)\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
+      cantGetPendingList: "『 𝐄𝐑𝐑𝐎𝐑 』\n\n✦ UNABLE TO RETRIEVE PENDING LIST\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
+      returnListClean: "『 𝐏𝐄𝐍𝐃𝐈𝐍𝐆 』\n\n✦ NO PENDING CHATS FOUND\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪",
+      approveAllSuccess: "『 𝐀𝐏𝐏𝐑𝐎𝐕𝐄𝐃 𝐀𝐋𝐋 』\n\n✦ APPROVED ALL %1 CHATS\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪"
     } 
   },
 
@@ -44,7 +43,7 @@ module.exports = {
         } catch (e) {}
       } else {
         try {
-          await bot.sendMessage(chatItem.id, "『 👑 𝗡𝗜𝗝𝗛𝗨𝗠 𝗕𝗢𝗧 』\n\n✦ Bot activated successfully\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪");
+          await bot.sendMessage(chatItem.id, "『 👑 𝗡𝗜𝗝𝗛𝗨𝗠 𝗕𝗢𝗧 』\n\n✦ BOT ACTIVATED SUCCESSFULLY\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪");
         } catch (e) {}
       }
       count++;
@@ -62,8 +61,17 @@ module.exports = {
     return bot.sendMessage(chatId, responseText);
   },
 
-  onStart: async function ({ bot, msg, getLang, commandName }) {
+  execute: async function (bot, msg, args) {
     const chatId = msg.chat.id;
+    const commandName = "p";
+    const getLang = (key, ...params) => {
+      let str = this.langs.en[key] || key;
+      params.forEach((val, idx) => {
+        str = str.replace(new RegExp(`%${idx + 1}`, 'g'), val);
+      });
+      return str;
+    };
+
     try {
       if (!global.telegramPendingChats) {
         global.telegramPendingChats = [];
@@ -79,7 +87,7 @@ module.exports = {
         msgText += `✦ ${i + 1}. ${g.title || g.id}\n`;
       });
 
-      msgText += "\n› Reply: 1 2 - Approve\n› Reply: c 1 2 - Cancel\n› Reply: -all - Approve All\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪";
+      msgText += "\n› REPLY: 1 2 - APPROVE\n› REPLY: C 1 2 - CANCEL\n› REPLY: -ALL - APPROVE ALL\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪";
 
       try { await bot.deleteMessage(chatId, msg.message_id); } catch (e) {}
 
