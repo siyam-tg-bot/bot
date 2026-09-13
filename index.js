@@ -109,6 +109,8 @@ bot.on('message', async (msg) => {
         const userRole = getUserRole(userId);
         const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
+        if (!text) return;
+
         if (config.whitelistMode && config.whitelistMode.enable) {
             if (userRole < 2) {
                 const whiteListIds = config.whitelistMode.whiteListIds || [];
@@ -117,8 +119,6 @@ bot.on('message', async (msg) => {
                 }
             }
         }
-
-        if (!text) return;
 
         if (text === currentPrefix) {
             const helpCommand = currentPrefix + "help";
@@ -170,7 +170,7 @@ bot.on('message', async (msg) => {
                         reply_to_message_id: msg.message_id,
                         reply_markup: {
                             inline_keyboard: [
-                                [{ text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝗧 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }]
+                                [{ text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }]
                             ]
                         }
                     });
