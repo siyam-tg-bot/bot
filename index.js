@@ -7,11 +7,11 @@ global.activeReplies = new Map();
 global.telegramPendingChats = [];
 
 process.on('uncaughtException', (err) => {
-    console.error('Crash Prevented - Uncaught Exception:', err.message);
+    console.error('Crash Prevented:', err.message);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Crash Prevented - Unhandled Rejection:', reason);
+process.on('unhandledRejection', (reason) => {
+    console.error('Crash Prevented:', reason);
 });
 
 const token = config.botToken;
@@ -73,14 +73,13 @@ function loadAllModules() {
                 delete require.cache[require.resolve(filePath)];
                 try {
                     const moduleExport = require(filePath);
-                    
                     if (label === 'events') {
                         if (typeof moduleExport === 'function') moduleExport(bot);
                     } else {
                         registerCommand(moduleExport);
                     }
                 } catch (error) {
-                    console.error(`Error loading ${file} from ${label}:`, error.message);
+                    console.error(`Error loading ${file}:`, error.message);
                 }
             }
         }
@@ -111,42 +110,57 @@ bot.on('message', async (msg) => {
 
         if (!text) return;
 
+        if (text === currentPrefix) {
+            const helpCommand = currentPrefix + "help";
+            return bot.sendMessage(chatId, `📜 𝗧𝗛𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗬𝗢𝗨 𝗔𝗥𝗘 𝗨𝗦𝗜𝗡𝗚 𝗗𝗢𝗘𝗦 𝗡𝗢𝗧 𝗘𝗫𝗜𝗦𝗧, 𝗧𝗬𝗣𝗘 \`${helpCommand}\` 𝗧𝗢 𝗦𝗘𝗘 𝗔𝗟𝗟 𝗔𝗩𝗔𝗜𝗟𝗔𝗕𝗟𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦`, { parse_mode: "Markdown", reply_to_message_id: msg.message_id });
+        }
+
         let args = [];
         let commandName = '';
+        let hasPrefix = false;
 
         if (text.startsWith(currentPrefix)) {
+            hasPrefix = true;
             const withoutPrefix = text.slice(currentPrefix.length).trim();
             args = withoutPrefix.split(/ +/);
             commandName = args.shift().toLowerCase();
         } else {
-            const tempArgs = text.split(/ +/);
-            const firstWord = tempArgs[0].toLowerCase();
-            if (commands.has(firstWord) || aliases.has(firstWord)) {
-                args = tempArgs;
-                commandName = args.shift().toLowerCase();
-            } else {
-                return;
+            if (userRole > 0) {
+                const tempArgs = text.split(/ +/);
+                const firstWord = tempArgs[0].toLowerCase();
+                if (commands.has(firstWord) || aliases.has(firstWord)) {
+                    args = tempArgs;
+                    commandName = args.shift().toLowerCase();
+                    hasPrefix = true;
+                }
             }
+        }
+
+        if (!hasPrefix) {
+            return;
         }
 
         const actualCommandName = commands.has(commandName) ? commandName : aliases.get(commandName);
 
-        if (actualCommandName && commands.has(actualCommandName)) {
-            const command = commands.get(actualCommandName);
-            const requiredRole = command.role !== undefined ? command.role : 0;
+        if (!actualCommandName || !commands.has(actualCommandName)) {
+            const helpCommand = currentPrefix + "help";
+            return bot.sendMessage(chatId, `🔎 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 "${commandName}" 𝗗𝗢𝗘𝗦 𝗡𝗢𝗧 𝗘𝗫𝗜𝗦𝗧, 𝗧𝗬𝗣𝗘 \`${helpCommand}\` 𝗧𝗢 𝗦𝗘𝗘 𝗔𝗟𝗟 𝗔𝗩𝗔𝗜𝗟𝗔𝗕𝗟𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦`, { parse_mode: "Markdown", reply_to_message_id: msg.message_id });
+        }
 
-            if (userRole < requiredRole) {
-                return bot.sendMessage(chatId, "MY BOSS SIYAM ONLY");
-            }
+        const command = commands.get(actualCommandName);
+        const requiredRole = command.role !== undefined ? command.role : 0;
 
-            try {
-                if (typeof command.execute === 'function') {
-                    return await command.execute(bot, msg, args);
-                }
-            } catch (error) {
-                console.error(`Error executing ${actualCommandName}:`, error);
-                return;
+        if (userRole < requiredRole) {
+            return bot.sendMessage(chatId, "❌ 𝐌𝐘 𝐁𝐎𝐒𝐒 𝐒𝐈𝐘𝐀𝐌 𝐎𝐍𝐋𝐘", { reply_to_message_id: msg.message_id });
+        }
+
+        try {
+            if (typeof command.execute === 'function') {
+                return await command.execute(bot, msg, args);
             }
+        } catch (error) {
+            console.error(`Error executing ${actualCommandName}:`, error.message);
+            return bot.sendMessage(chatId, `❌ সিয়াম ভাই, কমান্ড রান করতে সমস্যা হইছে!`, { reply_to_message_id: msg.message_id });
         }
 
     } catch (err) {
