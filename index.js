@@ -111,11 +111,25 @@ bot.on('message', async (msg) => {
 
         if (!text) return;
 
-        let commandText = '';
-        const args = text.split(/ +/);
-        const firstWord = args.shift().toLowerCase();
+        let args = [];
+        let commandName = '';
 
-        const actualCommandName = commands.has(firstWord) ? firstWord : aliases.get(firstWord);
+        if (text.startsWith(currentPrefix)) {
+            const withoutPrefix = text.slice(currentPrefix.length).trim();
+            args = withoutPrefix.split(/ +/);
+            commandName = args.shift().toLowerCase();
+        } else {
+            const tempArgs = text.split(/ +/);
+            const firstWord = tempArgs[0].toLowerCase();
+            if (commands.has(firstWord) || aliases.has(firstWord)) {
+                args = tempArgs;
+                commandName = args.shift().toLowerCase();
+            } else {
+                return;
+            }
+        }
+
+        const actualCommandName = commands.has(commandName) ? commandName : aliases.get(commandName);
 
         if (actualCommandName && commands.has(actualCommandName)) {
             const command = commands.get(actualCommandName);
@@ -131,7 +145,7 @@ bot.on('message', async (msg) => {
                 }
             } catch (error) {
                 console.error(`Error executing ${actualCommandName}:`, error);
-                return bot.sendMessage(chatId, 'Error executing command!');
+                return;
             }
         }
 
