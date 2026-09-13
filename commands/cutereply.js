@@ -7,7 +7,7 @@ const AUTHOR = "𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
 module.exports = {
   config: {
     name: "cutereply",
-    version: "3.2.1",
+    version: "3.3.0",
     author: AUTHOR,
     countDown: 0,
     role: 0,
@@ -51,13 +51,22 @@ const TRIGGERS = [
 ───────────────
 » 👤 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍
  📞 +8801789138157
-» ✈️ 𝐓𝐄𝐋𝐄𝐆𝐑𝐀𝐌:t.me/ri_siyam
-» 🔗 𝗙𝗔𝗖𝗘𝗕𝗢𝗢𝗞: https://www.facebook.com/profile.»php?id=61592677587804`,
+» ✈️ 𝐓𝐄𝐋𝐄𝐆𝐑𝗔𝐌: t.me/ri_siyam
+» 🔗 𝗙𝗔𝗖𝗘𝗕𝗢𝗢𝗞: https://www.facebook.com/profile.php?id=61592677587804`,
     images: [
       "https://i.imgur.com/XDj7Lg3.jpeg",
       "https://i.imgur.com/vPTaRaf.jpeg",
       "https://i.imgur.com/maHcZQB.jpeg",
       "https://i.imgur.com/pWNb6lR.jpeg"
+    ],
+    buttons: [
+      [
+        { text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" },
+        { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+      ],
+      [
+        { text: "🔗 𝐅𝐀𝐂𝐄𝐁𝐎𝐎𝐊 𝐏𝐑𝐎𝐅𝐈𝐋𝐄", url: "https://www.facebook.com/profile.php?id=61592677587804" }
+      ]
     ]
   },
   {
@@ -79,11 +88,20 @@ const TRIGGERS = [
 » 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍
 
 » 📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧: +8801789138157
-» ✈️ 𝐓𝐄𝐋𝐄𝐆𝐑𝐀𝐌:t.me/ri_siyam
+» ✈️ 𝐓𝐄𝐋𝐄𝐆𝐑𝗔𝐌: t.me/ri_siyam
 » 🔗 𝗙𝗔𝗖𝗘𝗕𝗢𝗢𝗞: https://www.facebook.com/profile.php?id=61592677587804`,
     images: [
       "https://i.imgur.com/rkrXNso.jpeg",
       "https://i.imgur.com/wyNCOKV.jpeg"
+    ],
+    buttons: [
+      [
+        { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" },
+        { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+      ],
+      [
+        { text: "🔗 𝐅𝐀𝐂𝐄𝐁𝐎𝐎𝐊", url: "https://www.facebook.com/profile.php?id=61592677587804" }
+      ]
     ]
   }
 ];
@@ -134,7 +152,10 @@ module.exports.onChat = async function ({ bot, msg }) {
       imgPath,
       {
         caption: matched.text,
-        reply_to_message_id: messageId
+        reply_to_message_id: messageId,
+        reply_markup: {
+          inline_keyboard: matched.buttons
+        }
       }
     );
 
