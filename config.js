@@ -6,7 +6,7 @@ module.exports = {
     ownerID: '8442705758', 
     
     adminIDs: [
-        '7683797493',
+        '',
         '8442705758'
     ],
 
@@ -16,7 +16,7 @@ module.exports = {
         enable: false,
         whiteListIds: [
             '8442705758',
-            '7683797493'
+            ''
         ]
     }
 };
