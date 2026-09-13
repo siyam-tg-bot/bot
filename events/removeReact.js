@@ -1,3 +1,11 @@
+const config = require('../config');
+
+function isOwnerOrAdmin(userId) {
+  const idStr = String(userId);
+  if (idStr === String(config.ownerID) || (config.adminIDs && config.adminIDs.map(String).includes(idStr))) return true;
+  return false;
+}
+
 module.exports = (bot) => {
   bot.on('message_reaction', async (reaction) => {
     try {
@@ -20,10 +28,17 @@ module.exports = (bot) => {
 
   bot.on('message', async (msg) => {
     try {
-      if (!msg || !msg.chat || !msg.reply_to_message) return;
+      if (!msg || !msg.chat || !msg.reply_to_message || !msg.from) return;
+
+      const userId = msg.from.id;
+      if (!isOwnerOrAdmin(userId)) return;
 
       const text = msg.text ? msg.text.trim().toLowerCase() : '';
-      if (text === 'r') {
+      const allowedTriggers = ['ক', 'a', 'r', 's', 'ডিলিট করো', 'rj'];
+
+      const shouldDelete = allowedTriggers.some(trigger => text.includes(trigger));
+
+      if (shouldDelete) {
         const chatId = msg.chat.id;
         const replyMessageId = msg.reply_to_message.message_id;
 
