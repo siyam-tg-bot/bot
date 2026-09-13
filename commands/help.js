@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const config = require('../config');
 
 function getSortedCommands() {
   const commandsDir = path.join(__dirname);
