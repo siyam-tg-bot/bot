@@ -1,103 +1,165 @@
-const config = require("../config");
-const fs = require("fs");
-const path = require("path");
+const fs = require('fs');
+const path = require('path');
+const config = require('../config');
+
+const COMMANDS_PER_PAGE = 15;
+
+function getSortedCommands() {
+  const commandsDir = path.join(__dirname);
+  const privateDir = path.join(__dirname, '..', 'private');
+  
+  let cmdSet = new Set();
+  
+  [commandsDir, privateDir].forEach(dir => {
+    if (fs.existsSync(dir)) {
+      fs.readdirSync(dir).forEach(file => {
+        if (file.endsWith('.js')) {
+          try {
+            const filePath = path.join(dir, file);
+            const cmd = require(filePath);
+            const name = cmd.name || (cmd.config && cmd.config.name);
+            if (name) {
+              cmdSet.add(name.toLowerCase());
+            }
+          } catch (e) {}
+        }
+      });
+    }
+  });
+
+  return Array.from(cmdSet).sort();
+}
+
+function generateHelpPage(page, botUsername) {
+  const commands = getSortedCommands();
+  const totalCommands = commands.length;
+  const totalPages = Math.ceil(totalCommands / COMMANDS_PER_PAGE) || 1;
+  
+  const currentPage = Math.max(1, Math.min(page, totalPages));
+  const startIndex = (currentPage - 1) * COMMANDS_PER_PAGE;
+  const currentCmds = commands.slice(startIndex, startIndex + COMMANDS_PER_PAGE);
+
+  let text = `━━━━❪👤❫━━━━\n`;
+  currentCmds.forEach((cmd, index) => {
+    const num = startIndex + index + 1;
+    text += `┣⊸ ${num} ✿ /${cmd}\n`;
+  });
+  text += `━━━━❪👤❫━━━━\n\n`;
+  text += `🌿 ★ ESB-BOT ★\n`;
+  text += `Page: ${currentPage}/${totalPages} | Total Cmd: [ ${totalCommands} ]\n`;
+  text += `Dev: ESB-TEAM`;
+
+  const keyboard = [];
+  
+  // পেজিনেশন রো
+  const navRow = [];
+  if (currentPage > 1) {
+    navRow.text = "◀️ Prev";
+    navRow.callback_data = `help_page_${currentPage - 1}`;
+  } else {
+    navRow.text = "⏹️";
+    navRow.callback_data = "help_noop";
+  }
+
+  const pageInfoButton = { text: `${currentPage}/${totalPages}`, callback_data: "help_noop" };
+
+  const nextButton = {};
+  if (currentPage < totalPages) {
+    nextButton.text = "Next ▶️";
+    nextButton.callback_data = `help_page_${currentPage + 1}`;
+  } else {
+    nextButton.text = "⏹️";
+    nextButton.callback_data = "help_noop";
+  }
+
+  keyboard.push([navRow, pageInfoButton, nextButton]);
+
+  
+  let cmdRow = [];
+  currentCmds.forEach((cmd, idx) => {
+    cmdRow.push({
+      text: `/${cmd}`,
+      
+      switch_inline_query_current_chat: `/${cmd}`
+    });
+    if (cmdRow.length === 2 || idx === currentCmds.length - 1) {
+      keyboard.push(cmdRow);
+      cmdRow = [];
+    }
+  });
+  
+  keyboard.push([
+    { text: "❌ Close", callback_data: "help_close" }
+  ]);
+
+  return { text, reply_markup: { inline_keyboard: keyboard } };
+}
 
 module.exports = {
   name: "help",
-  aliases: ["h", "cmds"],
-  version: "2.0",
-  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
+  aliases: ["commands", "menu", "start"],
+  version: "2.0.0",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
   role: 0,
-  category: "system",
-  shortDescription: "Shows list of all commands with buttons",
+  category: "general",
+  shortDescription: "Interactive command help menu",
+  guide: "help",
 
   execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
-    const totalCmds = bot.commands ? bot.commands.size : 0;
-    const currentPrefix = config.prefix || "/";
 
-    let categories = {};
-    bot.commands.forEach((cmd, name) => {
-      const cat = cmd.category || "general";
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push(name);
-    });
+    let botUsername = "SiyamSM_2026Bot";
+    try {
+      const me = await bot.getMe();
+      botUsername = me.username;
+    } catch (e) {}
 
-    let text = `📜 𝗧𝗢𝗧𝗔𝗟 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦: ${totalCmds}\n⚙️ 𝗣𝗥𝗘𝗙𝗜𝗫: ${currentPrefix}\n\nনিচের ক্যাটাগরি বা বাটনগুলো ব্যবহার করুন:`;
-
-    let inlineKeyboard = [];
-    let row = [];
-
-    Object.keys(categories).forEach((cat, index) => {
-      row.push({ text: `📂 ${cat.toUpperCase()}`, callback_data: `help_cat_${cat}` });
-      if (row.length === 2) {
-        inlineKeyboard.push(row);
-        row = [];
-      }
-    });
-    if (row.length > 0) inlineKeyboard.push(row);
-
-    inlineKeyboard.push([{ text: "🔄 RELOAD ALL", callback_data: "cmd_loadall" }]);
+    const { text, reply_markup } = generateHelpPage(1, botUsername);
 
     return bot.sendMessage(chatId, text, {
       reply_to_message_id: messageId,
-      reply_markup: { inline_keyboard: inlineKeyboard }
+      reply_markup: reply_markup
     });
   },
 
-  onCallbackQuery: async function (bot, callbackQuery) {
-    const data = callbackQuery.data;
-    const qMsg = callbackQuery.message;
-    if (!qMsg) return;
+  handleCallback: async (bot, query) => {
+    const data = query.data;
+    if (!data.startsWith("help_")) return;
 
-    if (data.startsWith("help_cat_")) {
-      const catName = data.replace("help_cat_", "");
-      let cmdList = [];
+    const chatId = query.message.chat.id;
+    const messageId = query.message.message_id;
 
-      bot.commands.forEach((cmd, name) => {
-        if ((cmd.category || "general") === catName) {
-          cmdList.push(`\`${config.prefix || "/"}${name}\``);
-        }
-      });
+    let botUsername = "SiyamSM_2026Bot";
+    try {
+      const me = await bot.getMe();
+      botUsername = me.username;
+    } catch (e) {}
 
-      await bot.answerCallbackQuery(callbackQuery.id, { text: `Loading ${catName} commands...` });
-      return await bot.editMessageText(`📂 𝗖𝗔𝗧𝗘𝗚𝗢𝗥𝗬: *${catName.toUpperCase()}*\n\n${cmdList.join(", ")}`, {
-        chat_id: qMsg.chat.id,
-        message_id: qMsg.message_id,
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [[{ text: "🔙 BACK TO MENU", callback_data: "help_back" }]]
-        }
-      });
+    if (data === "help_close") {
+      try {
+        await bot.deleteMessage(chatId, messageId);
+      } catch (e) {}
+      return bot.answerCallbackQuery(query.id, { text: "Menu closed." });
     }
 
-    if (data === "help_back") {
-      const totalCmds = bot.commands ? bot.commands.size : 0;
-      let categories = {};
-      bot.commands.forEach((cmd, name) => {
-        const cat = cmd.category || "general";
-        if (!categories[cat]) categories[cat] = [];
-        categories[cat].push(name);
-      });
+    if (data === "help_noop") {
+      return bot.answerCallbackQuery(query.id);
+    }
 
-      let inlineKeyboard = [];
-      let row = [];
-      Object.keys(categories).forEach((cat) => {
-        row.push({ text: `📂 ${cat.toUpperCase()}`, callback_data: `help_cat_${cat}` });
-        if (row.length === 2) {
-          inlineKeyboard.push(row);
-          row = [];
-        }
-      });
-      if (row.length > 0) inlineKeyboard.push(row);
+    if (data.startsWith("help_page_")) {
+      const page = parseInt(data.replace("help_page_", "")) || 1;
+      const { text, reply_markup } = generateHelpPage(page, botUsername);
 
-      await bot.answerCallbackQuery(callbackQuery.id);
-      return await bot.editMessageText(`📜 𝗧𝗢𝗧𝗔𝗟 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦: ${totalCmds}\n\nনিচের ক্যাটাগরিগুলো থেকে বেছে নিন:`, {
-        chat_id: qMsg.chat.id,
-        message_id: qMsg.message_id,
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      try {
+        await bot.editMessageText(text, {
+          chat_id: chatId,
+          message_id: messageId,
+          reply_markup: reply_markup
+        });
+      } catch (e) {}
+
+      return bot.answerCallbackQuery(query.id);
     }
   }
 };
