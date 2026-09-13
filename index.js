@@ -105,11 +105,20 @@ bot.on('message', async (msg) => {
         if (!msg || !msg.chat) return;
         const text = msg.text ? msg.text.trim() : (msg.caption ? msg.caption.trim() : '');
         const chatId = msg.chat.id;
-        const userId = msg.from ? msg.from.id : 0;
+        const userId = msg.from ? String(msg.from.id) : "0";
         const userRole = getUserRole(userId);
         const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
 
         if (!text) return;
+
+        if (config.whitelistMode && config.whitelistMode.enable) {
+            if (userRole < 2) {
+                const whiteListIds = config.whitelistMode.whiteListIds || [];
+                if (!whiteListIds.includes(userId)) {
+                    return;
+                }
+            }
+        }
 
         if (text === currentPrefix) {
             const helpCommand = currentPrefix + "help";
