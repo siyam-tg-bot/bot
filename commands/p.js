@@ -43,7 +43,8 @@ module.exports = {
         } catch (e) {}
       } else {
         try {
-          await bot.sendMessage(chatItem.id, "『 👑 𝗡𝗜𝗝𝗛𝗨𝗠 𝗕𝗢𝗧 』\n\n✦ BOT ACTIVATED SUCCESSFULLY\n\n➤ OWNER: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪");
+          global.telegramPendingChats = global.telegramPendingChats.filter(c => c.id !== chatItem.id);
+          await bot.sendMessage(chatItem.id, "『 👑 𝐄𝐒𝐁-𝐁𝐎𝐓 』\n\n✦ Bot activated and approved successfully!\n\n➤ Owner: 𓆩👑𝐒𝐈𝐘𝐀𝐌-👑𓆪");
         } catch (e) {}
       }
       count++;
