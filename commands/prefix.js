@@ -44,7 +44,6 @@ module.exports = {
     const userId = msg.from ? msg.from.id : 0;
     const currentPrefix = config.prefix || "/";
 
-    // ১. কোনো আর্গুমেন্ট না থাকলে প্যানেল দেখাবে (onChat এর মতো কাজ করবে)
     if (!args || args.length === 0) {
       if (global.prefixVideoToggle[chatId] === undefined)
         global.prefixVideoToggle[chatId] = 0;
@@ -57,8 +56,8 @@ module.exports = {
       if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
       const mediaPath = path.join(cacheDir, `prefix_${Date.now()}.gif`);
 
-      const systemPrefix = config.prefix || "/";
-      const groupPrefix = config.prefix || "/";
+      const systemPrefix = currentPrefix;
+      const groupPrefix = currentPrefix;
       const groupName = msg.chat.title || "Private Chat";
 
       const time = moment().tz("Asia/Dhaka").format("hh:mm A");
@@ -107,20 +106,20 @@ module.exports = {
       }
     }
 
-    // ২. প্রিফিক্স রিসেট বা পরিবর্তন করার কমান্ড হ্যান্ডলার
     if (args[0] === "reset") {
       config.prefix = "/";
-      fs.writeFileSync(
-        path.join(__dirname, "..", "config.json"),
-        JSON.stringify(config, null, 2)
-      );
-      return bot.sendMessage(chatId, `✅ 𝐏𝐫𝐞𝐟𝐢𝐱 𝐑𝐞𝐬𝐞𝐭 𝐒𝐮𝐜𝐜𝐞𝐬𝐬!\n🔰 𝐒𝐲𝐬𝐭𝐞𝐦: /`, { reply_to_message_id: messageId });
+      try {
+        fs.writeFileSync(
+          path.join(__dirname, "..", "config.js"),
+          `module.exports = ${JSON.stringify(config, null, 4)};`
+        );
+      } catch (e) {}
+      return bot.sendMessage(chatId, `✅ 𝐏𝐫𝐞𝐟𝐢𝐱 𝐑𝐞𝐬𝐞𝐭 𝐒𝐮𝐜𝐜𝐞𝐬!\n🔰 𝐒𝐲𝐬𝐭𝐞𝐦: /`, { reply_to_message_id: messageId });
     }
 
     const newPrefix = args[0];
     const setGlobal = args[1] === "-g";
 
-    // অ্যাডমিন চেক (রোল ২ মানে অ্যাডমিন বা ওনার)
     const isOwner = String(userId) === String(config.ownerID);
     if (setGlobal && !isOwner) {
       return bot.sendMessage(chatId, `⛔ 𝐎𝐧𝐥𝐲 𝐁𝐨𝐭 𝐀𝐝𝐦𝐢𝐧 𝐂𝐚𝐧 𝐂𝐡𝐚𝐧𝐠𝐞 𝐆𝐥𝐨𝐛𝐚𝐥 𝐏𝐫𝐞𝐟𝐢𝐱.`, { reply_to_message_id: messageId });
@@ -128,7 +127,7 @@ module.exports = {
 
     const confirmMsg = setGlobal
       ? "⚠️ 𝐆𝐥𝐨𝐛𝐚𝐥 𝐏𝐫𝐞𝐟𝐢𝐱 𝐂𝐡𝐚𝐧𝐠𝐞?\n👉 𝐂𝐥𝐢𝐜𝐤 𝐁𝐞𝐥𝐨𝐰 𝐓𝐨 𝐂𝐨𝐧𝐟𝐢𝐫𝐦"
-      : "⚠️ 𝐆𝐫𝐨𝐮𝐩 𝐏𝐫𝐞𝐟𝐢𝐱 𝐂𝐡𝐚𝐧𝐠𝐞?\n👉 𝐂𝐥𝐢𝐜𝐤 𝐁𝐞𝐥𝐨𝐰 𝐓𝐨 𝐂𝐨𝐧𝐟𝐢𝐫𝐦";
+      : "⚠️ 𝐆𝐫𝐨𝐮𝐩 𝐏𝐫𝐞𝐟𝐢𝐱 𝐂𝐡𝐚𝐧𝐠𝐞?\n👉 𝐂𝐥𝐢𝐜𝐤 𝐁𝐞𝐥𝐨𝐰 𝐓𝐨 𝐂𝐨𝐧𝐟ⵉ𝐫𝐦";
 
     const confirmMarkup = {
       inline_keyboard: [
@@ -145,7 +144,6 @@ module.exports = {
     });
   },
 
-  // ইনলাইন বাটন হ্যান্ডলার (যা টেলিগ্রামে রিঅ্যাকশনের বিকল্প হিসেবে কাজ করবে)
   onCallbackQuery: async function (bot, callbackQuery) {
     const data = callbackQuery.data;
     const qMsg = callbackQuery.message;
@@ -160,8 +158,8 @@ module.exports = {
         config.prefix = newPrefix;
         try {
           fs.writeFileSync(
-            path.join(__dirname, "..", "config.json"),
-            JSON.stringify(config, null, 2)
+            path.join(__dirname, "..", "config.js"),
+            `module.exports = ${JSON.stringify(config, null, 4)};`
           );
         } catch (e) {}
 
@@ -171,7 +169,6 @@ module.exports = {
           message_id: qMsg.message_id
         });
       } else {
-        // সিঙ্গেল চ্যাট বা লোকাল প্রিফিক্স সেটআপ
         await bot.answerCallbackQuery(callbackQuery.id, { text: "Prefix Changed for Chat!" });
         return await bot.editMessageText(`✅ 𝐆𝐑𝐎𝐔𝐏 𝐏𝐑𝐄𝐅𝐈𝐗 𝐂𝐇𝐀𝐍𝐆𝐄𝐃!\n🆕 ${newPrefix}`, {
           chat_id: qMsg.chat.id,
