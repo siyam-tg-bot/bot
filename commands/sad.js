@@ -2,17 +2,7 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
-module.exports = {
-  config: {
-    name: "sad",
-    version: "1.0.2",
-    role: 0,
-    author: "💋𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍👑",
-    description: "🎬 প্রতিবার কমান্ডে আলাদা ভিডিও এবং স্যাড ক্যাপশন পাঠাবে",
-    category: "Fun",
-    countDown: 5
-  }
-};
+const AUTHOR = "💋𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍👑";
 
 const sab2CacheDir = path.join(__dirname, "sab2_cache");
 if (!fs.existsSync(sab2CacheDir)) {
@@ -24,7 +14,7 @@ const videoData = [
   { url: "https://files.catbox.moe/ah0s9r.mp4", text: "সবচেয়ে কঠিন হলো কারো অবহেলা পাওয়ার পরও তাকেই ভালোবেসে যাওয়া..!! 💔" },
   { url: "https://files.catbox.moe/ydwkrm.mp4", text: "একাকীত্ব কখনো মানুষকে মারে না, শুধু ভেতর থেকে পুড়িয়ে ছাই করে দেয়..!! 🖤" },
   { url: "https://files.catbox.moe/111n24.mp4", text: "যার জন্য পুরো পৃথিবীর সাথে লড়েছিলাম, আজ সে-ই আমার অপবাদের কারণ..!! 🥺" },
-  { url: "https://files.catbox.moe/ebyeyi.mp4", text: "স্মৃতিগুলো बড্ড অদ্ভুত, হাসির দিনে কাঁদায় আর কান্নার দিনে হাসায়..!! ⏳" },
+  { url: "https://files.catbox.moe/ebyeyi.mp4", text: "স্মৃতিগুলো বড্ড অদ্ভুত, হাসির দিনে কাঁদায় আর কান্নার দিনে হাসায়..!! ⏳" },
   { url: "https://files.catbox.moe/olpzpk.mp4", text: "অভিযোগ করে কী হবে? যার কপালে অবহেলা লেখা, সে তো অবহেলাই পাবে..!! 🥀" },
   { url: "https://files.catbox.moe/3y330y.mp4", text: "ভালো থাকার অভিনয় করতে করতে আজ আমি ক্লান্ত, কেউ বুঝলো না আমায়..!! 🖤" },
   { url: "https://files.catbox.moe/j4fhyp.mp4", text: "তুমি তো ভালোই আছো আমাকে ছাড়া, কষ্টটা তো শুধু আমার একার..!! 💔" },
@@ -92,10 +82,89 @@ if (!global.sad2PlayedHistory) {
   global.sad2PlayedHistory = [];
 }
 
-module.exports.execute = async function (bot, msg) {
-  const chatId = msg.chat.id;
-  const messageId = msg.message_id;
+module.exports = {
+  config: {
+    name: "sad",
+    version: "2.0.0",
+    role: 0,
+    author: AUTHOR,
+    description: "🎬 প্রতিবার কমান্ডে আলাদা ভিডিও এবং স্যাড ক্যাপশন পাঠাবে",
+    category: "Fun",
+    countDown: 5
+  },
 
+  execute: async function (bot, msg, args) {
+    await sendSadVideo(bot, msg.chat.id, msg.message_id);
+  },
+
+  onStart: async function ({ bot, msg, args }) {
+    await sendSadVideo(bot, msg.chat.id, msg.message_id);
+  },
+
+  onCallbackQuery: async function (bot, query) {
+    try {
+      const data = query.data;
+      if (data === "sad_next") {
+        const chatId = query.message.chat.id;
+
+        await bot.answerCallbackQuery(query.id, { text: "⏳ পরবর্তী স্যাড ভিডিও পাঠানো হচ্ছে..." });
+
+        if (global.sad2PlayedHistory.length >= videoData.length) {
+          global.sad2PlayedHistory = [];
+        }
+
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * videoData.length);
+        } while (global.sad2PlayedHistory.includes(randomIndex));
+
+        global.sad2PlayedHistory.push(randomIndex);
+        const currentVideo = videoData[randomIndex];
+        const videoName = `sad2_video_${randomIndex}.mp4`;
+        const videoPath = path.join(sab2CacheDir, videoName);
+
+        try {
+          if (!fs.existsSync(videoPath) || fs.statSync(videoPath).size === 0) {
+            const response = await axios.get(currentVideo.url, { responseType: "arraybuffer" });
+            fs.writeFileSync(videoPath, Buffer.from(response.data));
+          }
+
+          const caption = `
+╭───────────────⭓
+  ${currentVideo.text}
+───────────────⭓
+👑  𝗢𝗪𝗡𝗘𝗥 ➜
+    𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑  
+╰───────────────⭓`;
+
+          // আগের ভিডিও ডিলিট না করে নতুন ভিডিও নিচে পাঠানো হবে
+          await bot.sendVideo(chatId, fs.createReadStream(videoPath), {
+            caption: caption,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "sad_next" },
+                  { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+                ],
+                [
+                  { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
+                ]
+              ]
+            }
+          });
+
+        } catch (downloadError) {
+          console.error("❌ Sad2 Next Download Error:", downloadError);
+          bot.sendMessage(chatId, "❌ ভিডিওটি পাঠাতে সমস্যা হচ্ছে! আবার চেষ্টা করুন।");
+        }
+      }
+    } catch (err) {
+      console.error("Sad Callback Error:", err.message);
+    }
+  }
+};
+
+async function sendSadVideo(bot, chatId, messageId) {
   try {
     if (global.sad2PlayedHistory.length >= videoData.length) {
       global.sad2PlayedHistory = [];
@@ -133,7 +202,18 @@ module.exports.execute = async function (bot, msg) {
 
       await bot.sendVideo(chatId, fs.createReadStream(videoPath), {
         caption: caption,
-        reply_to_message_id: messageId
+        reply_to_message_id: messageId,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "sad_next" },
+              { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+            ],
+            [
+              { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
+            ]
+          ]
+        }
       });
 
     } catch (downloadError) {
@@ -147,4 +227,4 @@ module.exports.execute = async function (bot, msg) {
     console.error("❌ Sad2 Execution Error:", error);
     bot.sendMessage(chatId, "❌ কমান্ডটি রান করতে কোনো সমস্যা হয়েছে!", { reply_to_message_id: messageId });
   }
-};
+}
