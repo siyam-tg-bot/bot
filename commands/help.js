@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../config');
 
-const COMMANDS_PER_PAGE = 15;
+const COMMANDS_PER_PAGE = 5;
 
 function getSortedCommands() {
   const commandsDir = path.join(__dirname);
@@ -57,16 +57,11 @@ function generateHelpPage(page, botUsername) {
 
   keyboard.push([prevBtn, pageBtn, nextBtn]);
 
-  let cmdRow = [];
-  currentCmds.forEach((cmd, idx) => {
-    cmdRow.push({
+  currentCmds.forEach((cmd) => {
+    keyboard.push([{
       text: `/${cmd}`,
       switch_inline_query_current_chat: `/${cmd}`
-    });
-    if (cmdRow.length === 2 || idx === currentCmds.length - 1) {
-      keyboard.push(cmdRow);
-      cmdRow = [];
-    }
+    }]);
   });
 
   keyboard.push([
@@ -79,8 +74,8 @@ function generateHelpPage(page, botUsername) {
 module.exports = {
   name: "help",
   aliases: ["commands", "menu", "start"],
-  version: "2.0.1",
-  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝐀𝗡",
+  version: "2.1.0",
+  author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡",
   role: 0,
   category: "general",
   shortDescription: "Interactive command help menu",
