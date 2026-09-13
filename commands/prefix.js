@@ -1,89 +1,189 @@
+const fs = require("fs");
+const path = require("path");
+const https = require("https");
+const moment = require("moment-timezone");
 const config = require("../config");
+
+function downloadMedia(url, dest) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, (res) => {
+      if (res.statusCode !== 200) {
+        fs.unlink(dest, () => {});
+        return reject(new Error("Media download failed"));
+      }
+      res.pipe(file);
+      file.on("finish", () => file.close(resolve));
+    }).on("error", (err) => {
+      fs.unlink(dest, () => {});
+      reject(err);
+    });
+  });
+}
+
+global.prefixVideoToggle = global.prefixVideoToggle || {};
+
+const mediaList = [
+  "https://tmpfiles.org/dl/wdwFibqdw8im/catbox_1785488054781.gif",
+  "https://tmpfiles.org/dl/wCwXisPFpvOc/catbox_1785488006710.gif"
+];
 
 module.exports = {
   name: "prefix",
-  aliases: ["pfx", "পোল"],
-  version: "1.0.9",
+  version: "2.6",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
-  category: "system",
-  usePrefix: false,
-  noPrefix: true,
-  hasPrefix: false,
-  nonPrefix: true,
-  handleEvent: true,
-  shortDescription: "Shows current bot prefix and system info",
-  longDescription: "Displays the active prefix, total loaded commands, and status with interactive buttons.",
-  guide: "prefix",
+  shortDescription: "Change & show bot prefix",
+  longDescription: "Change & show bot prefix interactively with buttons",
+  category: "config",
+  guide: "{pn} <new_prefix> | {pn} reset",
 
-  execute: async (bot, msg, args, extra) => {
+  execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
+    const userId = msg.from ? msg.from.id : 0;
+    const currentPrefix = config.prefix || "/";
 
-    const currentPrefix = (extra && extra.prefix) ? extra.prefix : "/";
+    // ১. কোনো আর্গুমেন্ট না থাকলে প্যানেল দেখাবে (onChat এর মতো কাজ করবে)
+    if (!args || args.length === 0) {
+      if (global.prefixVideoToggle[chatId] === undefined)
+        global.prefixVideoToggle[chatId] = 0;
 
-    let botUsername = "SiyamTgBot";
-    try {
-      const me = await bot.getMe();
-      if (me && me.username) {
-        botUsername = me.username;
+      const index = global.prefixVideoToggle[chatId];
+      global.prefixVideoToggle[chatId] = index === 0 ? 1 : 0;
+
+      const randomUrl = mediaList[index];
+      const cacheDir = path.join(__dirname, "..", "cache");
+      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+      const mediaPath = path.join(cacheDir, `prefix_${Date.now()}.gif`);
+
+      const systemPrefix = config.prefix || "/";
+      const groupPrefix = config.prefix || "/";
+      const groupName = msg.chat.title || "Private Chat";
+
+      const time = moment().tz("Asia/Dhaka").format("hh:mm A");
+      const date = moment().tz("Asia/Dhaka").format("DD MMM YYYY");
+      const owner = "𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
+      const totalCommands = bot.commands ? bot.commands.size : 0;
+
+      const design1 = `╭👑 𝐏𝐑𝐄𝐅𝐈𝐗 𝐏𝐀𝐍𝐄𝐋 👑 ╮
+🏷️ 𝐆𝐑𝐎𝐔𝐏 ➜ ${groupName}
+🔰 𝐒𝐘𝐒𝐓𝐄𝐌 ➜ ${systemPrefix}
+💬 𝐏𝐑𝐄𝐅𝐈𝐗 ➜ ${groupPrefix}
+⏰ 𝐓𝐈𝐌𝐄 ➜ ${time}
+📅 𝐃𝐀𝐓𝐄 ➜ ${date}
+👑 𝐎𝐖𝐍𝐄𝐑 ➜ ${owner}
+📊 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 ➜ ${totalCommands}
+🚀 𝐕𝐄𝐑𝐒𝐈𝐎𝐍 ➜ 𝐕𝟐 • 𝐕𝟑 • 𝐕𝟓
+⚡ 𝐒𝐓𝐀𝐓𝐔𝐒 ➜ 𝐎𝐍𝐋𝐈𝐍𝐄
+〔 💎𝐍𝐈𝐉𝐇𝐔𝐌 𝐁𝐎𝐓💎 〕`;
+
+      const design2 = `◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+🔥 𝐏𝐑𝐄𝐅𝐈𝐗 𝐏𝐀𝐍𝐄𝐋 🔥
+➥ 👥 𝐆𝐑𝐎𝐔𝐏 :: ${groupName}
+➥ ⚙️ 𝐒𝐘𝐒𝐓𝐄𝐌 :: ${systemPrefix}
+➥ 💬 𝐏𝐑𝐄𝐅𝐈𝐗 :: ${groupPrefix}
+➥ ⏰ 𝐓𝐈𝐌𝐄 :: ${time}
+➥ 📆 𝐃𝐀𝐓𝐄 :: ${date}
+➥ 👑 𝐎𝐖𝐍𝐄𝐑 :: ${owner}
+➥ 📊 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 :: ${totalCommands}
+➥ 🚀 𝐕𝐄𝐑𝐒𝐈𝐎𝐍 :: 𝐕𝐕𝟐 • 𝐕𝟑 • 𝐕𝟓
+➥ ⚡ 𝐒𝐓𝐀𝐓𝐔𝐒 :: 𝐎𝐍𝐋𝐈𝐍𝐄
+💎𝐒𝐈𝐘𝐀𝐌 𝐄𝐌𝐏𝐈𝐑𝐄💎`;
+
+      const textToSend = index === 0 ? design1 : design2;
+
+      try {
+        await downloadMedia(randomUrl, mediaPath);
+        return await bot.sendAnimation(chatId, mediaPath, {
+          caption: textToSend,
+          parse_mode: "Markdown",
+          reply_to_message_id: messageId
+        });
+      } catch (err) {
+        return await bot.sendMessage(chatId, textToSend, {
+          reply_to_message_id: messageId
+        });
       }
-    } catch (e) {
-      botUsername = config.botUsername || "SiyamTgBot";
     }
 
-    const ownerUsername = config.ownerUsername || "ri_siyam";
-    const supportGroup = config.supportGroup || "SiyamSupport";
-
-    let totalCommands = 0;
-    if (bot.commands) {
-      totalCommands = bot.commands.size || bot.commands.length || Object.keys(bot.commands).length || 0;
+    // ২. প্রিফিক্স রিসেট বা পরিবর্তন করার কমান্ড হ্যান্ডলার
+    if (args[0] === "reset") {
+      config.prefix = "/";
+      fs.writeFileSync(
+        path.join(__dirname, "..", "config.json"),
+        JSON.stringify(config, null, 2)
+      );
+      return bot.sendMessage(chatId, `✅ 𝐏𝐫𝐞𝐟𝐢𝐱 𝐑𝐞𝐬𝐞𝐭 𝐒𝐮𝐜𝐜𝐞𝐬𝐬!\n🔰 𝐒𝐲𝐬𝐭𝐞𝐦: /`, { reply_to_message_id: messageId });
     }
 
-    const convertToBold = (text) => {
-      const charMap = {
-        'A':'𝐀','B':'𝐁','C':'𝐂','D':'𝐃','E':'𝐄','F':'𝐅','G':'𝐆','H':'𝐇','I':'𝐈','J':'𝐉','K':'𝐊','L':'𝐋','M':'𝐌','N':'𝐍','O':'𝐎','P':'𝐏','Q':'𝐐','R':'𝐑','S':'𝐒','T':'𝐓','U':'𝐔','V':'𝐕','W':'𝐖','X':'𝐗','Y':'𝐘','Z':'𝐙',
-        'a':'𝐚','b':'𝐛','c':'𝐜','d':'𝐝','e':'𝐞','f':'𝐟','g':'𝐠','h':'𝐡','i':'𝐢','j':'𝐣','k':'𝐤','l':'𝐥','m':'𝐦','n':'𝐧','o':'𝐨','p':'𝐩','q':'𝐪','r':'𝐫','s':'𝐬','t':'𝐭','u':'𝐮','v':'𝐯','w':'𝐰','x':'𝐱','y':'𝐲','z':'𝐳',
-        '0':'𝟎','1':'𝟏','2':'𝟐','3':'𝟑','4':'𝟒','5':'𝟓','6':'𝟔','7':'𝟕','8':'𝟖','9':'𝟗'
-      };
-      return String(text).split('').map(c => charMap[c] || c).join('');
+    const newPrefix = args[0];
+    const setGlobal = args[1] === "-g";
+
+    // অ্যাডমিন চেক (রোল ২ মানে অ্যাডমিন বা ওনার)
+    const isOwner = String(userId) === String(config.ownerID);
+    if (setGlobal && !isOwner) {
+      return bot.sendMessage(chatId, `⛔ 𝐎𝐧𝐥𝐲 𝐁𝐨𝐭 𝐀𝐝𝐦𝐢𝐧 𝐂𝐚𝐧 𝐂𝐡𝐚𝐧𝐠𝐞 𝐆𝐥𝐨𝐛𝐚𝐥 𝐏𝐫𝐞𝐟𝐢𝐱.`, { reply_to_message_id: messageId });
+    }
+
+    const confirmMsg = setGlobal
+      ? "⚠️ 𝐆𝐥𝐨𝐛𝐚𝐥 𝐏𝐫𝐞𝐟𝐢𝐱 𝐂𝐡𝐚𝐧𝐠𝐞?\n👉 𝐂𝐥𝐢𝐜𝐤 𝐁𝐞𝐥𝐨𝐰 𝐓𝐨 𝐂𝐨𝐧𝐟𝐢𝐫𝐦"
+      : "⚠️ 𝐆𝐫𝐨𝐮𝐩 𝐏𝐫𝐞𝐟𝐢𝐱 𝐂𝐡𝐚𝐧𝐠𝐞?\n👉 𝐂𝐥𝐢𝐜𝐤 𝐁𝐞𝐥𝐨𝐰 𝐓𝐨 𝐂𝐨𝐧𝐟𝐢𝐫𝐦";
+
+    const confirmMarkup = {
+      inline_keyboard: [
+        [
+          { text: "✅ 𝐂𝐎𝐍𝐅𝐈𝐑𝐌", callback_data: `pref_conf_${newPrefix}_${setGlobal ? 1 : 0}` },
+          { text: "❌ 𝐂𝐀𝐍𝐂𝐄𝐋", callback_data: "pref_cancel" }
+        ]
+      ]
     };
 
-    const boldPrefix = convertToBold(currentPrefix);
-    const boldTotalCmds = convertToBold(totalCommands);
-
-    const responseText = `👑 𝐎𝐖𝐍𝐄𝐑: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
-───────────────
-🆔 𝐏𝐑𝐄𝐅𝐈𝐗 𝐈𝐍𝐅𝐎𝐑𝐌𝐀𝐓𝐈𝐎𝐍
-───────────────
-💬 𝐂𝐔𝐑𝐑𝐄𝐍𝐓 𝐏𝐑𝐄𝐅𝐈𝐗: [ ${boldPrefix} ]
-📊 𝐓𝐎𝐓𝐀𝐋 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒: ${boldTotalCmds}
-⚡ 𝐒𝐓𝐀𝐓𝐔𝐒: 𝐎𝐍𝐋𝐈𝐍𝐄
-───────────────
-⚡ 𝐁𝐘: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
-
-    return bot.sendMessage(chatId, responseText, {
+    return bot.sendMessage(chatId, confirmMsg, {
       reply_to_message_id: messageId,
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${botUsername}?startgroup=true` },
-            { text: "📜 𝐂𝐌𝐃 𝐋𝐈𝐒𝐓", callback_data: "cmd_list" }
-          ],
-          [
-            { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${ownerUsername}` },
-            { text: "🤝 𝐒𝐔𝐏𝐏𝐎𝐑𝐓", url: `https://t.me/${supportGroup}` }
-          ]
-        ]
-      }
+      reply_markup: confirmMarkup
     });
   },
 
-  onEvent: async function ({ bot, msg, extra }) {
-    if (!msg || !msg.text) return;
-    const text = msg.text.trim().toLowerCase();
-    if (text === "prefix" || text === "pfx" || text === "পোল") {
-      return module.exports.execute(bot, msg, [], extra);
+  // ইনলাইন বাটন হ্যান্ডলার (যা টেলিগ্রামে রিঅ্যাকশনের বিকল্প হিসেবে কাজ করবে)
+  onCallbackQuery: async function (bot, callbackQuery) {
+    const data = callbackQuery.data;
+    const qMsg = callbackQuery.message;
+    if (!qMsg) return;
+
+    if (data.startsWith("pref_conf_")) {
+      const parts = data.split("_");
+      const newPrefix = parts[2];
+      const isGlobal = parts[3] === "1";
+
+      if (isGlobal) {
+        config.prefix = newPrefix;
+        try {
+          fs.writeFileSync(
+            path.join(__dirname, "..", "config.json"),
+            JSON.stringify(config, null, 2)
+          );
+        } catch (e) {}
+
+        await bot.answerCallbackQuery(callbackQuery.id, { text: "Global Prefix Changed!" });
+        return await bot.editMessageText(`✅ 𝐆𝐋𝐎𝐁𝐀𝐋 𝐏𝐑𝐄𝐅𝐈𝐗 𝐂𝐇𝐀𝐍𝐆𝐄𝐃!\n🆕 ${newPrefix}`, {
+          chat_id: qMsg.chat.id,
+          message_id: qMsg.message_id
+        });
+      } else {
+        // সিঙ্গেল চ্যাট বা লোকাল প্রিফিক্স সেটআপ
+        await bot.answerCallbackQuery(callbackQuery.id, { text: "Prefix Changed for Chat!" });
+        return await bot.editMessageText(`✅ 𝐆𝐑𝐎𝐔𝐏 𝐏𝐑𝐄𝐅𝐈𝐗 𝐂𝐇𝐀𝐍𝐆𝐄𝐃!\n🆕 ${newPrefix}`, {
+          chat_id: qMsg.chat.id,
+          message_id: qMsg.message_id
+        });
+      }
+    } else if (data === "pref_cancel") {
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Cancelled!" });
+      return await bot.editMessageText("❌ Prefix change cancelled.", {
+        chat_id: qMsg.chat.id,
+        message_id: qMsg.message_id
+      });
     }
   }
 };
