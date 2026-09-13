@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 
-// গ্লোবাল ভেরিয়েবল সেটআপ
 global.activeReplies = new Map();
 global.telegramPendingChats = [];
 
@@ -38,12 +37,10 @@ const commandsDir = path.join(__dirname, 'commands');
 const eventsDir = path.join(__dirname, 'events');
 const privateDir = path.join(__dirname, 'private');
 
-// ফোল্ডারগুলো না থাকলে তৈরি করবে
 [commandsDir, eventsDir, privateDir].forEach(dir => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-// কমান্ড রেজিস্টার করার ফাংশন
 function registerCommand(command) {
     if (!command) return;
     const cmdName = command.name || command.config?.name;
@@ -63,7 +60,6 @@ function registerCommand(command) {
     }
 }
 
-// সমস্ত মডিউল লোড করার ফাংশন
 function loadAllModules() {
     commands.clear();
     aliases.clear();
@@ -99,7 +95,6 @@ function loadAllModules() {
 
 loadAllModules();
 
-// ইউজারের রোল চেক
 function getUserRole(userId) {
     const idStr = String(userId);
     if (idStr === String(config.ownerID) || (config.adminIDs && config.adminIDs.map(String).includes(idStr))) return 2;
@@ -107,7 +102,6 @@ function getUserRole(userId) {
     return 0;
 }
 
-// মেসেজ ইভেন্ট হ্যান্ডলার
 bot.on('message', async (msg) => {
     try {
         if (!msg || !msg.chat) return;
@@ -130,7 +124,6 @@ bot.on('message', async (msg) => {
             }
         }
 
-        // ১. প্রিফিক্স সহ কমান্ড রান করা
         if (isCommand) {
             const args = commandText.split(/ +/);
             const inputCommand = args.shift().toLowerCase();
@@ -176,7 +169,6 @@ bot.on('message', async (msg) => {
             }
         }
 
-        // ২. ব্যাকগ্রাউন্ড লিসেনার (প্রিফিক্স ছাড়া মেসেজ ও বটের মেসেজে রিপ্লাই প্রসেস করার জন্য)
         for (const command of commands.values()) {
             try {
                 if (typeof command.onChat === 'function') {
@@ -196,4 +188,36 @@ bot.on('message', async (msg) => {
     }
 });
 
-console.log('Telegram Bot Engine Active and Ready!');
+bot.on('callback_query', async (callbackQuery) => {
+    try {
+        const data = callbackQuery.data;
+        const qMsg = callbackQuery.message;
+        const userId = callbackQuery.from.id;
+        const userRole = getUserRole(userId);
+        const currentPrefix = config.prefix !== undefined ? config.prefix : '/';
+
+        if (data.startsWith("run_")) {
+            const cmdToRun = data.replace("run_", "");
+            await bot.answerCallbackQuery(callbackQuery.id, {
+                text: `Executing: ${currentPrefix}${cmdToRun}`,
+                show_alert: false
+            });
+
+            const targetCmd = commands.get(cmdToRun);
+            if (targetCmd && typeof targetCmd.execute === "function") {
+                const fakeMsg = {
+                    chat: qMsg.chat,
+                    message_id: qMsg.message_id,
+                    from: callbackQuery.from,
+                    text: `${currentPrefix}${cmdToRun}`
+                };
+                return await targetCmd.execute(bot, fakeMsg, []);
+            }
+        }
+    } catch (err) {
+        console.error("Callback Query Error:", err);
+    }
+});
+
+console.log('Telegram Bot Engine Active and Ready![cite: 4]');
+```[cite: 4]
