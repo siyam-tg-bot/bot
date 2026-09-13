@@ -43,14 +43,15 @@ const privateDir = path.join(__dirname, 'private');
 
 function registerCommand(command) {
     if (!command) return;
-    const cmdName = command.name || command.config?.name;
-    const cmdExecute = command.execute || command.onStart;
+    
+    const cmdName = command.name || (command.config && command.config.name);
+    const hasExecution = typeof command.execute === 'function' || typeof command.onStart === 'function';
 
-    if (cmdName && typeof cmdExecute === 'function') {
+    if (cmdName && hasExecution) {
         const lowerName = cmdName.toLowerCase();
         commands.set(lowerName, command);
 
-        const aliasList = command.aliases || command.config?.aliases;
+        const aliasList = command.aliases || (command.config && command.config.aliases);
         if (aliasList) {
             const list = Array.isArray(aliasList) ? aliasList : [aliasList];
             list.forEach(alias => {
@@ -136,9 +137,7 @@ bot.on('message', async (msg) => {
             }
         }
 
-        if (!hasPrefix) {
-            return;
-        }
+        if (!hasPrefix) return;
 
         const actualCommandName = commands.has(commandName) ? commandName : aliases.get(commandName);
 
@@ -148,15 +147,17 @@ bot.on('message', async (msg) => {
         }
 
         const command = commands.get(actualCommandName);
-        const requiredRole = command.role !== undefined ? command.role : 0;
+        const cmdRole = command.role !== undefined ? command.role : (command.config && command.config.role !== undefined ? command.config.role : 0);
 
-        if (userRole < requiredRole) {
-            return bot.sendMessage(chatId, "❌ 𝐌𝐘 𝐁𝐎𝐒𝐒 𝐒𝐈𝐘𝐀𝐌 𝐎𝐍𝐋𝐘", { reply_to_message_id: msg.message_id });
+        if (userRole < cmdRole) {
+            return bot.sendMessage(chatId, "𝐌𝐘 𝐁𝐎𝐒𝐒 𝐒𝐈𝐘𝐀𝐌 𝐎𝐍𝐋𝐘", { reply_to_message_id: msg.message_id });
         }
 
         try {
             if (typeof command.execute === 'function') {
                 return await command.execute(bot, msg, args);
+            } else if (typeof command.onStart === 'function') {
+                return await command.onStart({ bot, msg, args });
             }
         } catch (error) {
             console.error(`Error executing ${actualCommandName}:`, error.message);
