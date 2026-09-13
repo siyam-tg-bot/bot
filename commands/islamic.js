@@ -35,7 +35,7 @@ const captions = [
 module.exports = {
   config: {
     name: "islamic",
-    version: "2.2.0",
+    version: "2.3.0",
     author: AUTHOR,
     countDown: 5,
     role: 0,
@@ -61,16 +61,8 @@ module.exports = {
       const data = query.data;
       if (data === "islamic_next") {
         const chatId = query.message.chat.id;
-        const messageId = query.message.message_id;
 
-        await bot.answerCallbackQuery(query.id, { text: "⏳ পরবর্তী ভিডিও লোড হচ্ছে..." });
-        
-        // শুধু আগের ভিডিওর ক্যাপশন এডিট করে লোডিং মেসেজ দেখানো হবে, আগের ভিডিও ডিলিট হবে না
-        await bot.editMessageCaption("⏳ *পরবর্তী ইসলামিক ভিডিও লোড করা হচ্ছে, একটু অপেক্ষা করুন...*", {
-          chat_id: chatId,
-          message_id: messageId,
-          parse_mode: "Markdown"
-        }).catch(() => {});
+        await bot.answerCallbackQuery(query.id, { text: "⏳ পরবর্তী ইসলামিক ভিডিও পাঠানো হচ্ছে..." });
 
         const link = links[Math.floor(Math.random() * links.length)];
         const caption = captions[Math.floor(Math.random() * captions.length)];
@@ -88,11 +80,7 @@ module.exports = {
         response.data.pipe(writer);
 
         writer.on("finish", async () => {
-          try {
-            // আগের লোডিং মেসেজযুক্ত ভিডিওটি ডিলিট করে নতুন ভিডিও পাঠানো হবে
-            await bot.deleteMessage(chatId, messageId);
-          } catch (e) {}
-
+          // আগের ভিডিও ডিলিট না করে নতুন ভিডিও নিচে পাঠানো হবে
           await bot.sendVideo(
             chatId,
             cachePath,
@@ -101,14 +89,11 @@ module.exports = {
               reply_markup: {
                 inline_keyboard: [
                   [
-                    { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "islamic_next" }
-                  ],
-                  [
-                    { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" },
+                    { text: "⏭️ 𝐍𝐄𝐗𝐓 𝐕𝐈𝐃𝐄𝐎", callback_data: "islamic_next" },
                     { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
                   ],
                   [
-                    { text: "🔗 𝐅𝐀𝐂𝐄𝐁𝐎𝐎𝐊", url: "https://www.facebook.com/profile.php?id=61592677587804" }
+                    { text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
                   ]
                 ]
               }
@@ -163,14 +148,11 @@ async function sendIslamicVideo(bot, chatId, messageId) {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "islamic_next" }
-              ],
-              [
-                { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" },
+                { text: "⏭️ 𝐍𝐄𝐗𝐓 𝐕𝐈𝐃𝐄𝐎", callback_data: "islamic_next" },
                 { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
               ],
               [
-                { text: "🔗 𝐅𝐀𝐂𝐄𝐁𝐎𝐎𝐊", url: "https://www.facebook.com/profile.php?id=61592677587804" }
+                { text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
               ]
             ]
           }
