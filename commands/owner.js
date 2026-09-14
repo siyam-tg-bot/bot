@@ -1,7 +1,6 @@
 const moment = require("moment-timezone");
 const fs = require("fs-extra");
 const path = require("path");
-const axios = require("axios");
 
 const mediaLinks = [
   "https://files.catbox.moe/lyppld.mp4",
@@ -37,7 +36,7 @@ function getNextMedia() {
 
 module.exports = {
   name: "owner",
-  version: "4.5.0",
+  version: "4.5.1",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "owner",
@@ -48,6 +47,14 @@ module.exports = {
   execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
+
+    // প্রথমে লোডিং মেসেজ পাঠানো হচ্ছে যেন বট চুপ করে না থাকে
+    let loadingMsg;
+    try {
+      loadingMsg = await bot.sendMessage(chatId, `🔄 𝙻𝙾𝙰𝙳𝙸𝙽𝙶 𝙾𝚆𝙽𝙴𝚁 𝙸𝙽𝙵𝙾... 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆𝙰𝙸𝚃.`, {
+        reply_to_message_id: messageId
+      });
+    } catch (e) {}
 
     const ownerFB1 = "https://www.facebook.com/share/14k1GZFVH2T/";
     const ownerFB2 = "https://www.facebook.com/share/14k1GZFVH2T/";
@@ -108,6 +115,13 @@ module.exports = {
         reply_to_message_id: messageId,
         ...inlineKeyboard
       });
+    }
+
+    // মূল মেসেজ পাঠানোর পর লোডিং মেসেজটি ডিলিট করে দেওয়া হচ্ছে
+    if (loadingMsg && loadingMsg.message_id) {
+      try {
+        await bot.deleteMessage(chatId, loadingMsg.message_id);
+      } catch (e) {}
     }
   }
 };
