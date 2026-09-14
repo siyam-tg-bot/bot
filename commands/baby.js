@@ -74,7 +74,17 @@ const baseApiUrl = async () => {
         const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/HINATA/main/baseApiUrl.json");
         return base.data.mahmud;
     } catch (e) {
-        return "https://hinata-api.replit.app"; // Fallback URL
+        return "https://hinata-api.replit.app";
+    }
+};
+
+const getBotResponse = async (text, attachments = []) => {
+    try {
+        const apiUrl = await baseApiUrl();
+        const res = await axios.post(`${apiUrl}/api/hinata`, { text, style: 3, attachments });
+        return res.data.message || "error baby🥹";
+    } catch {
+        return "error baby🥹";
     }
 };
 
@@ -163,10 +173,7 @@ module.exports = {
         }
       }
 
-      // Default AI Chat if command has text
-      const apiUrl = await baseApiUrl();
-      const res = await axios.post(`${apiUrl}/api/hinata`, { text: textArgs, style: 3, attachments: [] });
-      const botResponse = res.data.message || "error baby🥹";
+      const botResponse = await getBotResponse(textArgs, []);
       return bot.sendMessage(chatId, botResponse, { reply_to_message_id: messageId });
 
     } catch (err) {
@@ -175,7 +182,7 @@ module.exports = {
     }
   },
 
-  // Telegram automatic keyword/chat listener handler
+  // সাধারণ চ্যাট বা কিওয়ার্ড ম্যাচ করলে রেসপন্স করার জন্য
   onText: async function (bot, msg) {
     try {
       if (!msg.text) return;
@@ -184,7 +191,6 @@ module.exports = {
       const messageId = msg.message_id;
 
       if (mahmud.some(word => message.startsWith(word))) {
-        // Optional reaction or typing indicator if supported by telegram lib
         const messageParts = message.trim().split(/\s+/);
         
         if (messageParts.length === 1) {
@@ -198,12 +204,25 @@ module.exports = {
               break;
             }
           }
-          const apiUrl = await baseApiUrl();
-          const res = await axios.post(`${apiUrl}/api/hinata`, { text: userText, style: 3, attachments: [] });
-          const botResponse = res.data.message || "error baby🥹";
+          const botResponse = await getBotResponse(userText, []);
           return bot.sendMessage(chatId, botResponse, { reply_to_message_id: messageId });
         }
       }
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  // বটের মেসেজে কেউ রিপ্লাই দিলে সেটি এখানে কাজ করবে
+  onReply: async function (bot, msg) {
+    try {
+      if (!msg.text) return;
+      const chatId = msg.chat.id;
+      const messageId = msg.message_id;
+      const text = msg.text.toLowerCase();
+
+      const replyMessage = await getBotResponse(text, []);
+      return bot.sendMessage(chatId, replyMessage, { reply_to_message_id: messageId });
     } catch (err) {
       console.error(err);
     }
