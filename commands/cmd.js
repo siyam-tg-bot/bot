@@ -17,7 +17,7 @@ function isURL(str) {
 module.exports = {
   name: "cmd",
   aliases: ["command", "cmds"],
-  version: "4.5.1",
+  version: "5.0.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 2,
   category: "admin",
@@ -108,8 +108,10 @@ module.exports = {
 
       let loadingMsg;
       try {
-        loadingMsg = await bot.sendMessage(chatId, "⏳ তথ্য সংগ্রহ করা হচ্ছে...", { reply_to_message_id: messageId });
+        loadingMsg = await bot.sendMessage(chatId, "⏳ ফাইল যাচাই এবং ইনস্টল করা হচ্ছে...", { reply_to_message_id: messageId });
       } catch (e) {}
+
+      const filePath = path.join(COMMANDS_DIR, fileName);
 
       try {
         let rawCode = "";
@@ -122,35 +124,32 @@ module.exports = {
           const res = await axios.get(fetchUrl, { timeout: 15000 });
           rawCode = res.data;
         } else {
-          // ইনভ্যালিড কোটস বা ইউনিকোড কারেক্টার ক্লিন করার জন্য
           rawCode = codeOrUrl
             .replace(/[\u201C\u201D]/g, '"')
             .replace(/[\u2018\u2019]/g, "'");
         }
 
-        const filePath = path.join(COMMANDS_DIR, fileName);
+        // প্রথমে ফাইলটি রাইট করা হচ্ছে
         fs.writeFileSync(filePath, rawCode, "utf8");
-
         delete require.cache[require.resolve(filePath)];
+        
+        // ফাইলটি require করে টেস্ট করা হচ্ছে
         const installedCmd = require(filePath);
 
         const captionText = 
 `  𝗢𝗪𝗡𝗘𝗥 𝗦𝗜𝗬𝗔𝗠-𝗛𝗔𝗦𝗔𝗡
 ───────────────
+» ✅ 𝗙𝗜𝗟𝗘 𝗜𝗡𝗦𝗧𝗔𝗟𝗟𝗘𝗗 𝗦𝗨𝗖𝗖𝗘𝗦𝗦𝗙𝗨𝗟𝗟𝗬!
 » 📁 𝗙𝗜𝗟𝗘 𝗡𝗔𝗠𝗘: ${fileName}
 » ⚙️ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗: ${installedCmd.name || "N/A"}
-» 👑 𝗔𝗨𝗧𝗛𝗢𝗥: ${installedCmd.author || "𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑"}
 » 🤖 𝗕𝗢𝗧 𝗡𝗔𝗠𝗘: @${botUsername}
 ───────────────
 » 🏷️ 𝗖𝗔𝗧𝗘𝗚𝗢𝗥𝗬: ${installedCmd.category || "system"}
 » 🔢 𝗩𝗘𝗥𝗦𝗜𝗢𝗡: ${installedCmd.version || "1.0.0"}
-» 🔑 𝗥𝗢𝗟𝗘: ${installedCmd.role ?? 0}
-───────────────
-» 📝 𝗦𝗧𝗔𝗧𝗨𝗦: Successfully Installed & Loaded!
 ───────────────
 » 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
 
-        if (loadingMsg) await bot.deleteMessage(chatId, loadingMsg.message_id);
+        if (loadingMsg) await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
 
         return bot.sendMessage(chatId, captionText, {
           reply_to_message_id: messageId,
@@ -158,16 +157,68 @@ module.exports = {
         });
 
       } catch (err) {
+        // যদি এরর খায়, তাহলে ভুল ফাইলটি সাথে সাথে রিমুভ করে দেওয়া হবে
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+
+        let errorType = "Unknown Error";
+        let errorDetails = err.message;
+
+        // এরর ক্যাটাগরি অনুযায়ী মেসেজ কাস্টমাইজ করা
+        if (err instanceof SyntaxError) {
+          errorType = "🔴 Syntax Error (কোডে ভুল আছে)";
+        } else if (err.code === "MODULE_NOT_FOUND") {
+          errorType = "📦 Missing Module (প্যাকেজ ইন্সটল করা নেই)";
+        } else if (err instanceof TypeError) {
+          errorType = "⚠️ Type Error (ভুল টাইপ ব্যবহার হয়েছে)";
+        }
+
+        const errorMsg = 
+`❌ **ফাইল ইনস্টল করতে ব্যর্থ হয়েছে!**
+
+📌 **ফাইলের নাম:** \`${fileName}\`
+🛠 **সমস্যার ধরন:** ${errorType}
+⚠️ **বিস্তারিত এরর:**
+\`\`\`javascript
+${errorDetails}
+\`\`\`
+*নোট: সমস্যাযুক্ত ফাইলটি স্বয়ংক্রিয়ভাবে ডিলিট করে দেওয়া হয়েছে। কোড ঠিক করে পুনরায় চেষ্টা করুন।*`;
+
         if (loadingMsg) await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
-        return bot.sendMessage(
-          chatId,
-          `❌ ফাইল ইনস্টল করতে সমস্যা হয়েছে!\nএরর: ${err.message}`,
-          { reply_to_message_id: messageId }
-        );
+        
+        return bot.sendMessage(chatId, errorMsg, {
+          reply_to_message_id: messageId,
+          parse_mode: "Markdown"
+        });
       }
     }
   },
 
+  // ... (বাকি ফাংশনগুলো আগের মতোই থাকবে, শুধু handleLoad এর এরর মেসেজ আপডেট করা হলো)
+
+  handleLoad: async (bot, chatId, messageId, fileName) => {
+    const fileWithExt = fileName.endsWith(".js") ? fileName : `${fileName}.js`;
+    const filePath = path.join(COMMANDS_DIR, fileWithExt);
+
+    if (!fs.existsSync(filePath)) {
+      return bot.sendMessage(chatId, `⚠️ \`${fileWithExt}\` ফাইলটি খুজে পাওয়া যায়নি!`, { reply_to_message_id: messageId, parse_mode: "Markdown" });
+    }
+
+    try {
+      delete require.cache[require.resolve(filePath)];
+      require(filePath);
+      return bot.sendMessage(chatId, `✅ \`${fileWithExt}\` রিলোড সম্পন্ন হয়েছে।`, { reply_to_message_id: messageId, parse_mode: "Markdown" });
+    } catch (err) {
+      let errorDetails = err.message;
+      return bot.sendMessage(chatId, `❌ **${fileWithExt} লোড করতে ব্যর্থ!**\n\n⚠️ **এরর:**\n\`\`\`javascript\n${errorDetails}\n\`\`\``, { 
+        reply_to_message_id: messageId, 
+        parse_mode: "Markdown" 
+      });
+    }
+  },
+
+  // ... (handleUnload, handleLoadAll, handleCallback আগের মতোই থাকবে)
   handleLoadAll: async (bot, chatId, messageId) => {
     try {
       let botUsername = config.botUsername || "SiyamSM_2026Bot";
@@ -203,7 +254,7 @@ module.exports = {
       if (failedFiles.length > 0) {
         captionText += `⚠️ 𝗦𝗢𝗠𝗢𝗦𝗦𝗔 𝗝𝗨𝗞𝗧𝗢 𝗙𝗜𝗟𝗘:\n`;
         failedFiles.forEach((item, idx) => {
-          captionText += `» ${idx + 1}. ${item.file}\n   ┗ 🔴 Error: ${item.error}\n`;
+          captionText += `» ${idx + 1}. ${item.file}\n   ┗ 🔴 ${item.error.substring(0, 50)}...\n`;
         });
       } else {
         captionText += `» ✨ সকল কমান্ড ফাইল সফলভাবে লোড হয়েছে!\n`;
@@ -227,23 +278,6 @@ module.exports = {
       });
     } catch (e) {
       return bot.sendMessage(chatId, `❌ সিস্টেম লোড এরর: ${e.message}`, { reply_to_message_id: messageId });
-    }
-  },
-
-  handleLoad: async (bot, chatId, messageId, fileName) => {
-    const fileWithExt = fileName.endsWith(".js") ? fileName : `${fileName}.js`;
-    const filePath = path.join(COMMANDS_DIR, fileWithExt);
-
-    if (!fs.existsSync(filePath)) {
-      return bot.sendMessage(chatId, `⚠️ "${fileWithExt}" ফাইলটি খুজে পাওয়া যায়নি!`, { reply_to_message_id: messageId });
-    }
-
-    try {
-      delete require.cache[require.resolve(filePath)];
-      require(filePath);
-      return bot.sendMessage(chatId, `✅ "${fileWithExt}" রিলোড সম্পন্ন হয়েছে।`, { reply_to_message_id: messageId });
-    } catch (err) {
-      return bot.sendMessage(chatId, `❌ "${fileWithExt}" লোড করতে ব্যর্থ!\n🔴 এরর: ${err.message}`, { reply_to_message_id: messageId });
     }
   },
 
@@ -341,7 +375,7 @@ module.exports = {
 » ⚙️ /cmd loadall
 » ⚙️ /cmd install <filename.js> <code>
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝐍 👑`;
+» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
 
       return bot.editMessageText(captionText, {
         chat_id: chatId,
