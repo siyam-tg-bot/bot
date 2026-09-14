@@ -24,7 +24,7 @@ module.exports = {
 
     let loadingMsg;
     try {
-      loadingMsg = await bot.sendMessage(chatId, `🔄 𝗟𝗢𝗔𝗗𝗜𝗡𝙶 𝗢𝗪𝗡𝗘𝗥 2...`, {
+      loadingMsg = await bot.sendMessage(chatId, "🔄 𝗟𝗢𝗔𝗗𝗜𝗡𝙶 𝗢𝗪𝗡𝗘𝗥 2...", {
         reply_to_message_id: messageId
       });
     } catch (e) {
@@ -81,83 +81,85 @@ module.exports = {
       }
 
     } catch (e) {
-      console.log(e);
       if (loadingMsg && loadingMsg.message_id) {
         await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
       }
-      await bot.sendMessage(chatId, `❌ 𝗞𝗔𝗝 𝗞𝗢𝗥𝗧𝗘 𝗦𝗢𝗠𝗢𝗦𝗦𝗔 𝗛𝗢𝗬𝗘𝗖𝗛𝗘!`, {
+      await bot.sendMessage(chatId, "❌ 𝗞𝗔𝗝 𝗞𝗢𝗥𝗧𝗘 𝗦𝗢𝗠𝗢𝗦𝗦𝗔 𝗛𝗢𝗬𝗘𝗖𝗛𝗘!", {
         reply_to_message_id: messageId
       });
     }
-  }
-};
+  },
 
-module.exports.handleCallbackQuery = async (bot, query) => {
-  const data = query.data;
-  if (!data || !data.startsWith("owner2_")) return;
+  onCallbackQuery: async (bot, query) => {
+    const data = query.data;
+    if (!data || !data.startsWith("owner2_")) return;
 
-  const chatId = query.message.chat.id;
+    const chatId = query.message.chat.id;
+    const messageId = query.message.message_id;
 
-  const session = global.owner2Session && global.owner2Session[chatId];
-  if (!session) {
-    return bot.answerCallbackQuery(query.id, { text: "𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗫𝗣𝗜𝗥𝗘𝗗!", show_alert: true });
-  }
-
-  const { gifUrls } = session;
-
-  if (data.startsWith("owner2_next_")) {
-    let currentIndex = parseInt(data.split("_")[2]);
-    if (isNaN(currentIndex)) currentIndex = 0;
-
-    let nextIndex = currentIndex % gifUrls.length;
-    const gifUrl = gifUrls[nextIndex];
-
-    try {
-      const cacheFolder = path.join(__dirname, "cache");
-      fs.ensureDirSync(cacheFolder);
-      const filePath = path.join(cacheFolder, `owner2_next_${Date.now()}.gif`);
-
-      const response = await axios({
-        method: "GET",
-        url: gifUrl,
-        responseType: "arraybuffer",
-        headers: { "User-Agent": "Mozilla/5.0" }
-      });
-
-      fs.writeFileSync(filePath, Buffer.from(response.data));
-
-      const displayPage = nextIndex + 1;
-      const replyText = `🫵তোর আব্বু লাগে 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n\n📄 𝗣𝗔𝗚𝗘: ${displayPage}/${gifUrls.length}`;
-
-      const nextPointer = (nextIndex + 1) % gifUrls.length;
-
-      const inlineKeyboard = {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: `owner2_next_${nextPointer}` }
-            ],
-            [
-              { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
-              { text: "🤖 𝗔𝗗𝗗 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
-            ]
-          ]
-        }
-      };
-
-      await bot.sendAnimation(chatId, fs.createReadStream(filePath), {
-        caption: replyText,
-        ...inlineKeyboard
-      });
-
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
-    } catch (e) {
-      console.log(e);
+    const session = global.owner2Session && global.owner2Session[chatId];
+    if (!session) {
+      return bot.answerCallbackQuery(query.id, { text: "𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗫𝗣𝗜𝗥𝗘𝗗!", show_alert: true });
     }
 
-    await bot.answerCallbackQuery(query.id);
+    const { gifUrls } = session;
+
+    if (data.startsWith("owner2_next_")) {
+      let currentIndex = parseInt(data.split("_")[2]);
+      if (isNaN(currentIndex)) currentIndex = 0;
+
+      let nextIndex = currentIndex % gifUrls.length;
+      const gifUrl = gifUrls[nextIndex];
+
+      try {
+        await bot.answerCallbackQuery(query.id, { text: "🔄 Loading next GIF..." });
+
+        const cacheFolder = path.join(__dirname, "cache");
+        fs.ensureDirSync(cacheFolder);
+        const filePath = path.join(cacheFolder, `owner2_next_${Date.now()}.gif`);
+
+        const response = await axios({
+          method: "GET",
+          url: gifUrl,
+          responseType: "arraybuffer",
+          headers: { "User-Agent": "Mozilla/5.0" }
+        });
+
+        fs.writeFileSync(filePath, Buffer.from(response.data));
+
+        const displayPage = nextIndex + 1;
+        const replyText = `🫵তোর আব্বু লাগে 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n\n📄 𝗣𝗔𝗚𝗘: ${displayPage}/${gifUrls.length}`;
+
+        const nextPointer = (nextIndex + 1) % gifUrls.length;
+
+        const inlineKeyboard = {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: `owner2_next_${nextPointer}` }
+              ],
+              [
+                { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
+                { text: "🤖 𝗔𝗗𝗗 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+              ]
+            ]
+          }
+        };
+
+        await bot.deleteMessage(chatId, messageId).catch(() => {});
+
+        await bot.sendAnimation(chatId, fs.createReadStream(filePath), {
+          caption: replyText,
+          ...inlineKeyboard
+        });
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+
+      } catch (e) {
+        await bot.answerCallbackQuery(query.id, { text: "Error loading GIF!" });
+      }
+    }
   }
 };
