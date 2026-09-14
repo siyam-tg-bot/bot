@@ -116,10 +116,14 @@ const videoLinks = [
     "https://drive.google.com/uc?export=download&id=1zRAFPp3sMPOlVyhoEPnHflRpiRe6C2pt"
 ];
 
+const adminIds = [
+    "YOUR_TELEGRAM_USER_ID"
+];
+
 module.exports = {
     name: "sex",
     aliases: ["sex", "sexy"],
-    version: "2.0",
+    version: "2.1",
     author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀🇳",
     role: 0,
     category: "18+",
@@ -128,6 +132,16 @@ module.exports = {
     execute: async (bot, msg, args) => {
         const chatId = msg.chat.id;
         const messageId = msg.message_id;
+        const senderID = msg.from ? msg.from.id.toString() : "";
+        const username = msg.from ? msg.from.username : "";
+
+        const isOwner = adminIds.includes(senderID) || username === "ri_siyam";
+
+        if (!isOwner) {
+            return bot.sendMessage(chatId, "× এই কমান্ডটি শুধুমাত্র বট এডমিনদের জন্য!", {
+                reply_to_message_id: messageId
+            });
+        }
 
         let loadingMsg;
         try {
@@ -155,7 +169,7 @@ module.exports = {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: "sex_next" }
+                            { text: "⏭️ 𝗡𝗘𝗫𝗧 𝗩𝗜𝗗𝗘𝗢", callback_data: "sex_next" }
                         ],
                         [
                             { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
@@ -190,6 +204,17 @@ module.exports = {
         if (!data || data !== "sex_next") return;
 
         const chatId = query.message.chat.id;
+        const senderID = query.from ? query.from.id.toString() : "";
+        const username = query.from ? query.from.username : "";
+
+        const isOwner = adminIds.includes(senderID) || username === "ri_siyam";
+
+        if (!isOwner) {
+            return bot.answerCallbackQuery(query.id, { 
+                text: "❌ শুধুমাত্র বট এডমিনরা নেক্সট করতে পারবে!", 
+                show_alert: true 
+            });
+        }
 
         try {
             await bot.answerCallbackQuery(query.id, { text: "🔄 Loading next video..." });
@@ -210,7 +235,7 @@ module.exports = {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: "sex_next" }
+                            { text: "⏭️ 𝗡𝗘𝗫𝗧 𝗩𝗜𝗗𝗘𝗢", callback_data: "sex_next" }
                         ],
                         [
                             { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
