@@ -17,7 +17,7 @@ function isURL(str) {
 module.exports = {
   name: "cmd",
   aliases: ["command", "cmds"],
-  version: "4.5.0",
+  version: "4.5.1",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 2,
   category: "admin",
@@ -43,7 +43,7 @@ module.exports = {
         ],
         [
           { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${botUsername}?startgroup=true` },
-          { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
+          { text: "👑 𝐎𝐖𝐍𝗘𝗥", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
         ]
       ]
     };
@@ -63,7 +63,7 @@ module.exports = {
 » ⚙️ /cmd loadall
 » ⚙️ /cmd install <filename.js> <code>
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑`;
+» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝐍 👑`;
 
       return bot.sendMessage(chatId, captionText, {
         reply_to_message_id: messageId,
@@ -122,7 +122,10 @@ module.exports = {
           const res = await axios.get(fetchUrl, { timeout: 15000 });
           rawCode = res.data;
         } else {
-          rawCode = codeOrUrl;
+          // ইনভ্যালিড কোটস বা ইউনিকোড কারেক্টার ক্লিন করার জন্য
+          rawCode = codeOrUrl
+            .replace(/[\u201C\u201D]/g, '"')
+            .replace(/[\u2018\u2019]/g, "'");
         }
 
         const filePath = path.join(COMMANDS_DIR, fileName);
@@ -136,7 +139,7 @@ module.exports = {
 ───────────────
 » 📁 𝗙𝗜𝗟𝗘 𝗡𝗔𝗠𝗘: ${fileName}
 » ⚙️ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗: ${installedCmd.name || "N/A"}
-» 👑 𝗔𝗨𝗧𝗛𝗢𝗥: ${installedCmd.author || "𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡 👑"}
+» 👑 𝗔𝗨𝗧𝗛𝗢𝗥: ${installedCmd.author || "𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑"}
 » 🤖 𝗕𝗢𝗧 𝗡𝗔𝗠𝗘: @${botUsername}
 ───────────────
 » 🏷️ 𝗖𝗔𝗧𝗘𝗚𝗢𝗥𝗬: ${installedCmd.category || "system"}
@@ -145,7 +148,7 @@ module.exports = {
 ───────────────
 » 📝 𝗦𝗧𝗔𝗧𝗨𝗦: Successfully Installed & Loaded!
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡 👑`;
+» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
 
         if (loadingMsg) await bot.deleteMessage(chatId, loadingMsg.message_id);
 
@@ -206,7 +209,7 @@ module.exports = {
         captionText += `» ✨ সকল কমান্ড ফাইল সফলভাবে লোড হয়েছে!\n`;
       }
 
-      captionText += `───────────────\n» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝐒𝗔𝐍 👑`;
+      captionText += `───────────────\n» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
 
       return bot.sendMessage(chatId, captionText, {
         reply_to_message_id: messageId,
@@ -217,7 +220,7 @@ module.exports = {
               { text: "📜 𝐂𝐌𝐃 𝐋𝐈𝐒𝐓", callback_data: "cmd_list" }
             ],
             [
-              { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
+              { text: "👑 𝐎𝐖𝐍𝗘𝗥", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
             ]
           ]
         }
@@ -338,7 +341,7 @@ module.exports = {
 » ⚙️ /cmd loadall
 » ⚙️ /cmd install <filename.js> <code>
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
+» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝐍 👑`;
 
       return bot.editMessageText(captionText, {
         chat_id: chatId,
@@ -351,7 +354,7 @@ module.exports = {
             ],
             [
               { text: "➕ 𝐀𝐃𝐃 𝐆𝐑𝐎𝐔𝐏", url: `https://t.me/${botUsername}?startgroup=true` },
-              { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
+              { text: "👑 𝐎𝐖𝐍𝗘𝗥", url: `https://t.me/${config.ownerUsername || "ri_siyam"}` }
             ]
           ]
         }
