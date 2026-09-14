@@ -1,11 +1,5 @@
-module.exports = {
-    config: {
-        name: "welcome",
-        version: "2.1",
-        author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
-        category: "events"
-    },
-    execute: async (bot, msg) => {
+module.exports = function(bot) {
+    bot.on("message", async (msg) => {
         if (!msg.chat || (msg.chat.type !== "group" && msg.chat.type !== "supergroup")) return;
 
         try {
@@ -39,5 +33,5 @@ module.exports = {
         } catch (error) {
             console.error("Welcome Error:", error.message);
         }
-    }
+    });
 };
