@@ -2,6 +2,7 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
+// প্রাইভেট ফোল্ডার বা ক্যাশ ডিরেক্টরি
 const CACHE_DIR = path.join(__dirname, "cache");
 
 if (!fs.existsSync(CACHE_DIR)) {
@@ -19,6 +20,7 @@ const videoList = [
 const USER_COOLDOWN = 3 * 60 * 1000;
 const lastReplyUser = {};
 
+// ব্যাকগ্রাউন্ডে ভিডিও ডাউনলোড করে প্রাইভেট ফোল্ডারে সেভ রাখা
 async function downloadVideos() {
   for (const vid of videoList) {
     const filePath = path.join(CACHE_DIR, vid.file);
@@ -50,29 +52,24 @@ downloadVideos();
 
 module.exports = {
   name: "mantion",
-  version: "14.3",
+  version: "14.4",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   shortDescription: "ADMIN MENTION AUTO REPLY",
   category: "system",
 
   handleMessage: async (bot, msg) => {
+    let loadingMsg = null;
     try {
       const chatId = msg.chat.id;
       const senderID = String(msg.from.id);
-      
-      // টেক্সট না থাকলেও যেন মেনশন কাজ করে সেজন্য হ্যান্ডেল করা হলো
       const text = msg.text ? msg.text.toLowerCase().trim() : "";
-
-      // আপনি চাইলে এখানে আপনার টেলিগ্রাম আইডি বসাতে পারেন, না চাইলে ফাকা বা ডামি রাখতে পারেন
-      const adminId = ""; 
-      if (adminId && senderID === adminId) return;
 
       const triggers = [
         "siyam",
         "সিয়াম ভাই",
         "@SiyamTgBot",
-        "স",
+        "@ri_siyam",
         "সিয়াম",
         "বট ওনার কে"
       ];
@@ -88,6 +85,15 @@ module.exports = {
       }
 
       lastReplyUser[senderID] = now;
+
+      // ১. প্রথমে লোডিং মেসেজ পাঠানো
+      try {
+        loadingMsg = await bot.sendMessage(chatId, `🔄 𝗟𝗢𝗔𝗗𝗜𝗡𝗚 𝗥𝗘𝗣𝗟𝗬...`, {
+          reply_to_message_id: msg.message_id
+        });
+      } catch (e) {
+        // লোডিং মেসেজ পাঠাতে না পারলে স্কিপ করবে
+      }
 
       const captions = [
         "Mantion_দিস না _সিয়াম বস এর মন মন ভালো নেই আস্কে-!💔🥀",
@@ -115,7 +121,7 @@ module.exports = {
           inline_keyboard: [
             [
               { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
-              { text: "🤖 𝗔𝗗𝗗 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+              { text: "🤖 𝗔𝗗𝗗 𝗕𝗢𝚃", url: "https://t.me/SiyamTgBot?startgroup=true" }
             ]
           ]
         }
@@ -131,38 +137,44 @@ module.exports = {
           ...inlineKeyboard
         });
       } else {
-        try {
-          const response = await axios({
-            method: "GET",
-            url: selectedVideo.url,
-            responseType: "stream",
-            timeout: 30000
-          });
+        const response = await axios({
+          method: "GET",
+          url: selectedVideo.url,
+          responseType: "stream",
+          timeout: 30000
+        });
 
-          const writer = fs.createWriteStream(videoPath);
-          response.data.pipe(writer);
+        const writer = fs.createWriteStream(videoPath);
+        response.data.pipe(writer);
 
-          await new Promise((resolve, reject) => {
-            writer.on("finish", resolve);
-            writer.on("error", reject);
-          });
+        await new Promise((resolve, reject) => {
+          writer.on("finish", resolve);
+          writer.on("error", reject);
+        });
 
-          await bot.sendVideo(chatId, fs.createReadStream(videoPath), {
-            caption: styledCaption,
-            reply_to_message_id: msg.message_id,
-            ...inlineKeyboard
-          });
-        } catch (err) {
-          console.log("Video Send Error:", err.message);
-          await bot.sendMessage(chatId, styledCaption, {
-            reply_to_message_id: msg.message_id,
-            ...inlineKeyboard
-          });
-        }
+        await bot.sendVideo(chatId, fs.createReadStream(videoPath), {
+          caption: styledCaption,
+          reply_to_message_id: msg.message_id,
+          ...inlineKeyboard
+        });
+      }
+
+      // ভিডিও সফলভাবে যাওয়ার পর লোডিং মেসেজ ডিলিট করা
+      if (loadingMsg && loadingMsg.message_id) {
+        await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
       }
 
     } catch (err) {
-      console.log("AdminMention Error:", err);
+      console.log("AdminMention Error:", err.message);
+
+      // কোনো সমস্যা হলে লোডিং মেসেজ ডিলিট করে এরর মেসেজ পাঠানো
+      if (loadingMsg && loadingMsg.message_id) {
+        await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+      }
+
+      await bot.sendMessage(msg.chat.id, `❌ 𝗞𝗔𝗝 𝗞𝗢𝗥𝗧𝗘 𝗦𝗢𝗠𝗢𝗦𝗦𝗔 𝗛𝗢𝗬𝗘𝗖𝗛𝗘!`, {
+        reply_to_message_id: msg.message_id
+      }).catch(() => {});
     }
   }
 };
