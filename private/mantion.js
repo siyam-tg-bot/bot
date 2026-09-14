@@ -19,7 +19,6 @@ const videoList = [
 const USER_COOLDOWN = 3 * 60 * 1000;
 const lastReplyUser = {};
 
-
 async function downloadVideos() {
   for (const vid of videoList) {
     const filePath = path.join(CACHE_DIR, vid.file);
@@ -51,29 +50,29 @@ downloadVideos();
 
 module.exports = {
   name: "mantion",
-  version: "14.2",
+  version: "14.3",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   shortDescription: "ADMIN MENTION AUTO REPLY",
   category: "system",
 
-
   handleMessage: async (bot, msg) => {
     try {
-      if (!msg.text) return;
-
       const chatId = msg.chat.id;
       const senderID = String(msg.from.id);
-      const text = msg.text.toLowerCase().trim();
+      
+      // টেক্সট না থাকলেও যেন মেনশন কাজ করে সেজন্য হ্যান্ডেল করা হলো
+      const text = msg.text ? msg.text.toLowerCase().trim() : "";
 
-      const adminId = "YOUR_TELEGRAM_ADMIN_ID"; 
-      if (senderID === adminId) return;
+      // আপনি চাইলে এখানে আপনার টেলিগ্রাম আইডি বসাতে পারেন, না চাইলে ফাকা বা ডামি রাখতে পারেন
+      const adminId = ""; 
+      if (adminId && senderID === adminId) return;
 
       const triggers = [
         "siyam",
         "সিয়াম ভাই",
         "@SiyamTgBot",
-        "@ri_siyam",
+        "স",
         "সিয়াম",
         "বট ওনার কে"
       ];
@@ -97,7 +96,7 @@ module.exports = {
         "বস সিয়াম কে এত মেনশন না দিয়ে باکس আসো হট করে দিবো🤷‍ঝাং 😘🥒",
         "বস সিয়াম কে Mantion_দিলে চুম্মাইয়া ঠুটের কালার change কইরা,লামু 💋😾😾🔨",
         "সিয়াম বস এখন বিজি জা বলার আমাকে বলতে পারেন_!!😼🥰",
-        "সিয়াম বস কে এতো মেনশন নাহ দিয়া বস কে একটা জি এফ দে 😒 😏",
+        "বস সিয়াম কে এতো মেনশন নাহ দিয়া বস কে একটা জি এফ দে 😒 😏",
         "Mantion_না দিয়ে বস সিয়াম এর সাথে সিরিয়াস প্রেম করতে চাইলে ইনবক্স https://www.facebook.com/profile.php?id=61589656899295",
         "বস সিয়াম কে মেনশন দিসনা পারলে একটা জি এফ দে",
         "বাল পাকনা Mantion_দিস না বস সিয়াম প্রচুর বিজি আছে 🥵🥀🤐",
@@ -109,14 +108,14 @@ module.exports = {
 `───────────────
 『 ${rawCaption} 』
 ───────────────
-👑‌ 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
+👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
 
       const inlineKeyboard = {
         reply_markup: {
           inline_keyboard: [
             [
               { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
-              { text: "🤖 𝗔𝗗𝗗 𝗕𝗢𝗧", url: "https://t.me/SiyamTgBot?startgroup=true" }
+              { text: "🤖 𝗔𝗗𝗗 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
             ]
           ]
         }
