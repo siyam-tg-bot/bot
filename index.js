@@ -93,6 +93,31 @@ function loadAllModules() {
 
 loadAllModules();
 
+// গ্লোবাল ইউটিলিটি হিসেবে লোডার ফাংশন যুক্ত করা হলো যাতে cmd.js থেকে সরাসরি কমান্ড লোড/আনলোড করা যায়
+global.utils = global.utils || {};
+global.utils.loadCommandFile = (fileName) => {
+    const filePath = path.join(commandsDir, `${fileName}.js`);
+    if (fs.existsSync(filePath)) {
+        delete require.cache[require.resolve(filePath)];
+        const mod = require(filePath);
+        registerCommand(mod);
+        return { status: "success", command: mod };
+    }
+    throw new Error(`File ${fileName}.js not found`);
+};
+
+global.utils.unloadCommandFile = (fileName) => {
+    const filePath = path.join(commandsDir, `${fileName}.js`);
+    if (fs.existsSync(filePath)) {
+        const mod = require(filePath);
+        const name = mod.name || (mod.config && mod.config.name);
+        if (name) commands.delete(name.toLowerCase());
+        delete require.cache[require.resolve(filePath)];
+        return { status: "success" };
+    }
+    throw new Error(`File ${fileName}.js not found`);
+};
+
 function getUserRole(userId) {
     const idStr = String(userId);
     if (idStr === String(config.ownerID) || (config.adminIDs && config.adminIDs.map(String).includes(idStr))) return 2;
@@ -119,21 +144,7 @@ bot.on('message', async (msg) => {
             }
         }
 
-        if (config.whitelistMode && config.whitelistMode.enable) {
-            if (userRole < 2) {
-                const whiteListIds = config.whitelistMode.whiteListIds || [];
-                if (!whiteListIds.includes(userId)) {
-                    return;
-                }
-            }
-        }
-
         if (!text) return;
-
-        if (text === currentPrefix) {
-            const helpCommand = currentPrefix + "help";
-            return bot.sendMessage(chatId, `📜 𝗧𝗛𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗 𝗬𝗢𝗨 𝗔𝗥𝗘 𝗨𝗦𝗜𝗡𝗚 𝗗𝗢𝗘𝗦 𝗡𝗢𝗧 𝗘𝗫𝗜𝗦𝗧, 𝗧𝗬𝗣𝗘 \`${helpCommand}\` 𝗧𝗢 𝗦𝗘𝗘 𝗔𝗟𝗟 𝗔𝗩𝗔𝗜𝗟𝗔𝗕𝗟𝗘 𝗖𝗢𝗠𝗠𝗔𝗡𝗗𝗦`, { parse_mode: "Markdown", reply_to_message_id: msg.message_id });
-        }
 
         let args = [];
         let commandName = '';
@@ -145,48 +156,9 @@ bot.on('message', async (msg) => {
             args = withoutPrefix.split(/ +/);
             let rawCmd = args.shift().toLowerCase();
             commandName = rawCmd.includes('@') ? rawCmd.split('@')[0] : rawCmd;
-        } else {
-            if (userRole > 0) {
-                const tempArgs = text.split(/ +/);
-                const firstWord = tempArgs[0].toLowerCase();
-                let cleanFirstWord = firstWord.includes('@') ? firstWord.split('@')[0] : firstWord;
-                if (commands.has(cleanFirstWord) || aliases.has(cleanFirstWord)) {
-                    args = tempArgs;
-                    let rawCmd = args.shift().toLowerCase();
-                    commandName = rawCmd.includes('@') ? rawCmd.split('@')[0] : rawCmd;
-                    hasPrefix = true;
-                }
-            }
         }
 
         if (!hasPrefix) return;
-
-        if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
-            if (userRole < 2) {
-                const isPending = global.telegramPendingChats && global.telegramPendingChats.some(c => c.id === chatId);
-                if (isPending) {
-                    const groupTitle = msg.chat.title || "Unknown Group";
-                    const notApprovedText = 
-`╭━❮ 𝐒𝐍𝐂-𝐁𝐎𝐓 ❯━╮
-├═━═━═━═━═━═━══━═
-├‣ ❌ 𝗡𝗢𝗧 𝗔𝗣𝗥𝗢𝗩𝗘𝗗
-├‣ 📛 𝗚𝗿𝗼𝘂𝗽: ${groupTitle}
-├‣ 🆔 𝗜𝗗: ${chatId}
-├═━═━═━═━═━═━═━═
-├‣ ⚠️ Approval Needed!
-╰━═━═━═━═━═━═━═━╯`;
-
-                    return bot.sendMessage(chatId, notApprovedText, {
-                        reply_to_message_id: msg.message_id,
-                        reply_markup: {
-                            inline_keyboard: [
-                                [{ text: "👑 𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }]
-                            ]
-                        }
-                    });
-                }
-            }
-        }
 
         const actualCommandName = commands.has(commandName) ? commandName : aliases.get(commandName);
 
@@ -222,8 +194,8 @@ bot.on('callback_query', async (query) => {
     try {
         if (bot.commands.has('cmd')) {
             const cmdModule = bot.commands.get('cmd');
-            if (typeof cmdModule.handleCallback === 'function') {
-                await cmdModule.handleCallback(bot, query);
+            if (typeof cmdModule.onCallbackQuery === 'function') {
+                await cmdModule.onCallbackQuery({ bot, query });
             }
         }
 
