@@ -11,11 +11,16 @@ module.exports = {
     execute: async (bot, msg, args) => {
         const chatId = msg.chat.id;
         const messageId = msg.message_id;
+        const startTime = Date.now();
 
-        await bot.sendMessage(chatId, `🔄 **বট সফলভাবে রিস্টার্ট হচ্ছে... দয়া করে একটু অপেক্ষা করুন।**`, {
-            reply_to_message_id: messageId,
-            parse_mode: "Markdown"
+        const endTime = Date.now();
+        const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+        await bot.sendMessage(chatId, `🔄 𝐑𝐄𝐒𝚃𝙰𝚁𝚃𝙸𝙽𝙶 𝐁𝐎𝐓... 𝐏𝐋𝐄𝐀𝐒𝐄 𝐖𝐀𝐈𝐓.\n⏱️ 𝐓𝐈𝐌𝐄 𝐓𝐀𝐊𝐄𝐍: ${duration} 𝐒𝐄𝐂𝐎𝐍𝐃𝐒`, {
+            reply_to_message_id: messageId
         });
+
+        console.log(`Restart command executed in ${duration} seconds.`);
 
         setTimeout(() => {
             process.exit(1);
