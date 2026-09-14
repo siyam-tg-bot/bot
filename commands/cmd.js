@@ -46,7 +46,6 @@ module.exports = {
   },
 
   onStart: async ({ args, message, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, event, commandName }) => {
-    // টেলিগ্রাম বট অবজেক্ট ও চ্যাট আইডি বের করা
     const bot = api;
     const chatId = event.chat?.id || event.chatId || event.threadID;
     const messageId = event.message_id || event.messageID;
@@ -93,7 +92,6 @@ module.exports = {
 
     const action = args[0].toLowerCase();
 
-    // 1. LOAD COMMAND
     if (action === "load" && args.length === 2) {
       const fileName = args[1];
       try {
@@ -107,8 +105,6 @@ module.exports = {
         return bot.sendMessage(chatId, `❌ **${fileName} লোড করতে ব্যর্থ!**\n\n⚠️ **এরর বিবরণ:**\n\`\`\`javascript\n${err.message}\n\`\`\``, { reply_to_message_id: messageId, parse_mode: "Markdown" });
       }
     }
-
-    // 2. LOAD ALL
     else if (action === "loadall" || action === "load-all") {
       const files = fs.readdirSync(COMMANDS_DIR).filter(file => file.endsWith(".js") && file !== "cmd.js");
       let loadedCount = 0;
@@ -149,8 +145,6 @@ module.exports = {
         reply_markup: defaultButtons
       });
     }
-
-    // 3. UNLOAD COMMAND
     else if (action === "unload" && args[1]) {
       const fileName = args[1].replace(".js", "");
       try {
@@ -160,8 +154,6 @@ module.exports = {
         return bot.sendMessage(chatId, `❌ আনলোড করতে সমস্যা হয়েছে: ${err.message}`, { reply_to_message_id: messageId });
       }
     }
-
-    // 4. UNLOAD ALL
     else if (action === "unloadall" || action === "unload-all") {
       const { GoatBot } = global;
       let count = 0;
@@ -174,8 +166,6 @@ module.exports = {
       }
       return bot.sendMessage(chatId, `✅ সফলভাবে মোট ${count} টি কমান্ড আনলোড করা হয়েছে।`, { reply_to_message_id: messageId });
     }
-
-    // 5. INSTALL COMMAND (URL or Code with Error Detection & Auto-Delete)
     else if (action === "install") {
       let url = args[1];
       let fileName = args[2];
@@ -220,7 +210,6 @@ module.exports = {
             rawCode = $("#content").text();
           }
         } else {
-          // কোড ডিরেক্ট ইনপুট দিলে
           if (args[args.length - 1].endsWith(".js")) {
             fileName = args[args.length - 1];
             rawCode = rawArgsText.slice(rawArgsText.indexOf('install') + 7, rawArgsText.indexOf(fileName)).trim();
@@ -241,7 +230,6 @@ module.exports = {
         const cleanFileName = fileName.replace(".js", "");
         const filePath = path.join(COMMANDS_DIR, `${cleanFileName}.js`);
 
-        // ফাইল সেভ এবং টেস্ট করা
         fs.writeFileSync(filePath, rawCode, "utf8");
 
         const infoLoad = loadScripts("cmds", cleanFileName, log, configCommands, bot, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, (k, ...v) => k);
@@ -257,7 +245,7 @@ module.exports = {
 » ⚙️ 𝗖𝗢𝗠𝗠𝗔𝗡𝗗: ${infoLoad.command?.config?.name || cleanFileName}
 » 🤖 𝗕𝗢𝗧: @${botUsername}
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
+» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝗡 👑`;
 
           return bot.sendMessage(chatId, successMsg, {
             reply_to_message_id: messageId,
@@ -268,7 +256,6 @@ module.exports = {
         }
 
       } catch (err) {
-        // যদি এরর খায়, তবে ত্রুটিপূর্ণ ফাইলটি অটো ডিলিট করে দেওয়া হবে
         let targetFile = fileName ? (fileName.endsWith(".js") ? fileName : `${fileName}.js`) : "";
         if (targetFile) {
           const badPath = path.join(COMMANDS_DIR, targetFile);
@@ -304,7 +291,6 @@ ${err.message}
     }
   },
 
-  // টেলিগ্রাম ইনলাইন বাটন হ্যান্ডলার (Callback Query)
   onCallbackQuery: async ({ bot, query }) => {
     const data = query.data;
     const chatId = query.message.chat.id;
@@ -400,7 +386,6 @@ ${err.message}
         return bot.editMessageText(`✅ \`${fileName}.js\` সফলভাবে আনলোড হয়েছে!`, {
           chat_id: chatId,
           message_id: messageId,
-          parse_mode: "Markdown",
           reply_markup: { inline_keyboard: [[{ text: "🔙 Back to List", callback_data: "cmd_list" }]] }
         });
       } catch (err) {
@@ -424,7 +409,7 @@ ${err.message}
 » ⚙️ /cmd loadall
 » ⚙️ /cmd install <filename.js> <code>
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝗛𝗔𝗦𝗔𝗡 👑`;
+» 👑 𝗢𝗪𝗡𝗘𝗥: 𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝗔𝗦𝗔𝐍 👑`;
 
       return bot.editMessageText(mainText, {
         chat_id: chatId,
@@ -450,14 +435,10 @@ const packageAlready = [];
 const spinner = "\\|/-";
 let count = 0;
 
-// GoatBot স্ক্রিপ্ট লোডার ইঞ্জিন (অটো এনপিএম ইনস্টল ও সিনট্যাক্স চেকার সহ)
 function loadScripts(folder, fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode) {
-  const storageCommandFilesPath = global.GoatBot ? (global.GoatBot[folder == "cmds" ? "commandFilesPath" : "eventCommandsFilesPath"] || []) : [];
-
   try {
     const regExpCheckPackage = /require(\s+|)\((\s+|)[`'"]([^`'"]+)[`'"](\s+|)\)/g;
     const GoatBot = global.GoatBot || { commands: new Map(), aliases: new Map(), onChat: [], onFirstChat: [], onEvent: [], onAnyEvent: [] };
-    const { onFirstChat: allOnFirstChat = [], onChat: allOnChat = [], onEvent: allOnEvent = [], onAnyEvent: allOnAnyEvent = [] } = GoatBot;
     let setMap = "commands";
 
     let pathCommand = path.normalize(process.cwd() + `/scripts/${folder}/${fileName}.js`);
