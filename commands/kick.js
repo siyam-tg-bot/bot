@@ -1,11 +1,11 @@
 module.exports = {
     name: "kick",
     aliases: ["ban"],
-    version: "1.7",
+    version: "1.8",
     author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
     role: 1,
     category: "Group Management",
-    guide: "/kick (রিপ্লাই দিয়ে অথবা আইডি দিয়ে)",
+    guide: "/kick (রিপ্লাই দিয়ে, ইউজার আইডি দিয়ে অথবা মেনশন করে)",
 
     execute: async (bot, msg, args) => {
         const chatId = msg.chat.id;
@@ -23,7 +23,7 @@ module.exports = {
             const isBotAdmin = chatAdmins.some(admin => admin.user.id === botInfo.id);
 
             if (!isBotAdmin) {
-                return bot.sendMessage(chatId, "বোটকে আগে গ্রুপের এডমিন বানান, নাহলে আমি কাউকে বের করতে পারবো না! ⚠️", {
+                return bot.sendMessage(chatId, "বোটকে আগে গ্রুপের এডমিন বানান, নাহলে আমি কাউকে বের করতে পারবো না!", {
                     reply_to_message_id: messageId
                 });
             }
@@ -32,15 +32,33 @@ module.exports = {
 
             if (msg.reply_to_message && msg.reply_to_message.from) {
                 targetId = msg.reply_to_message.from.id;
+            } else if (msg.entities && msg.entities.length > 0) {
+                const mentionEntity = msg.entities.find(e => e.type === "text_mention" || e.type === "mention");
+                if (mentionEntity) {
+                    if (mentionEntity.type === "text_mention") {
+                        targetId = mentionEntity.user.id;
+                    } else if (mentionEntity.type === "mention") {
+                        const username = msg.text.substring(mentionEntity.offset, mentionEntity.offset + mentionEntity.length);
+                        try {
+                            const userChat = await bot.getChat(username);
+                            targetId = userChat.id;
+                        } catch (err) {}
+                    }
+                }
             } else if (args.length > 0) {
-                let targetArg = args[0].replace("@", "");
+                let targetArg = args[0];
                 if (!isNaN(targetArg)) {
                     targetId = parseInt(targetArg);
+                } else if (targetArg.startsWith("@")) {
+                    try {
+                        const userChat = await bot.getChat(targetArg);
+                        targetId = userChat.id;
+                    } catch (err) {}
                 }
             }
 
             if (!targetId) {
-                return bot.sendMessage(chatId, "যাকে বের করবেন তার মেসেজে রিপ্লাই দিন অথবা ইউজার আইডি দিন। 🧐", {
+                return bot.sendMessage(chatId, "যাকে বের করবেন তার মেসেজে রিপ্লাই দিন, ইউজার আইডি দিন অথবা মেনশন করুন।", {
                     reply_to_message_id: messageId
                 });
             }
