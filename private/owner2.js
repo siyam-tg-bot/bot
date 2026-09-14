@@ -10,12 +10,12 @@ const gifUrls = [
 
 module.exports = {
   name: "owner2",
-  version: "1.0.2",
+  version: "1.0.8",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "media",
   shortDescription: "𝗢𝗪𝗡𝗘𝗥 𝗚𝗜𝗙",
-  longDescription: "𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗢𝗪𝗡𝗘𝗥 𝗚𝗜𝗙 𝗦𝗘𝗡𝗗𝗘𝗥 𝗪𝗜𝗧𝗛 𝗡𝗘𝗫𝗧 𝗕𝗨𝗧𝗧𝗢𝗡.",
+  longDescription: "𝗣𝗥𝗘𝗠𝗜𝗨𝗠 𝗢𝗪𝗡𝗘𝗥 𝗚𝗜𝗙 𝗦𝗘𝗡𝗗𝗘𝗥 𝗪𝗜𝗧𝗛 𝗡𝗘𝗫𝗧 𝗕𝗨𝗧𝗧𝗢𝗡",
   guide: "owner2",
 
   execute: async (bot, msg, args) => {
@@ -48,7 +48,7 @@ module.exports = {
 
       fs.writeFileSync(filePath, Buffer.from(response.data));
 
-      const replyText = `🫵তোর আব্বু লাগে 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n\n📄 𝙿𝙰𝙶𝙴: ${index + 1}/${gifUrls.length}`;
+      const replyText = `🫵তোর আব্বু লাগে 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n\n📄 𝗣𝗔𝗚𝗘: ${index + 1}/${gifUrls.length}`;
 
       const inlineKeyboard = {
         reply_markup: {
@@ -85,7 +85,7 @@ module.exports = {
       if (loadingMsg && loadingMsg.message_id) {
         await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
       }
-      await bot.sendMessage(chatId, `❌ 𝙺𝙰𝙹 𝙺𝙾𝚁𝚃𝙴 𝚂𝙾𝙼𝙾𝚂𝚂𝙰 𝙷𝙾𝚈𝙴𝙲𝙷𝙴!`, {
+      await bot.sendMessage(chatId, `❌ 𝗞𝗔𝗝 𝗞𝗢𝗥𝗧𝗘 𝗦𝗢𝗠𝗢𝗦𝗦𝗔 𝗛𝗢𝗬𝗘𝗖𝗛𝗘!`, {
         reply_to_message_id: messageId
       });
     }
@@ -97,21 +97,19 @@ module.exports.handleCallbackQuery = async (bot, query) => {
   if (!data || !data.startsWith("owner2_")) return;
 
   const chatId = query.message.chat.id;
-  const messageId = query.message.message_id;
 
   const session = global.owner2Session && global.owner2Session[chatId];
   if (!session) {
-    return bot.answerCallbackQuery(query.id, { text: "𝚂𝙴𝚂𝚂𝙸𝙾𝙽 𝙴𝚇𝙿𝙸𝚁𝙴𝙳!", show_alert: true });
+    return bot.answerCallbackQuery(query.id, { text: "𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗫𝗣𝗜𝗥𝗘𝗗!", show_alert: true });
   }
 
   const { gifUrls } = session;
 
   if (data.startsWith("owner2_next_")) {
-    let nextIndex = parseInt(data.split("_")[2]);
-    if (isNaN(nextIndex) || nextIndex >= gifUrls.length) {
-      nextIndex = 0; 
-    }
+    let currentIndex = parseInt(data.split("_")[2]);
+    if (isNaN(currentIndex)) currentIndex = 0;
 
+    let nextIndex = currentIndex % gifUrls.length;
     const gifUrl = gifUrls[nextIndex];
 
     try {
@@ -128,13 +126,16 @@ module.exports.handleCallbackQuery = async (bot, query) => {
 
       fs.writeFileSync(filePath, Buffer.from(response.data));
 
-      const replyText = `🫵তোর আব্বু লাগে 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n\n📄 𝙿𝙰𝙶𝙴: ${nextIndex + 1}/${gifUrls.length}`;
+      const displayPage = nextIndex + 1;
+      const replyText = `🫵তোর আব্বু লাগে 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑\n\n📄 𝗣𝗔𝗚𝗘: ${displayPage}/${gifUrls.length}`;
+
+      const nextPointer = (nextIndex + 1) % gifUrls.length;
 
       const inlineKeyboard = {
         reply_markup: {
           inline_keyboard: [
             [
-              { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: `owner2_next_${nextIndex + 1}` }
+              { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: `owner2_next_${nextPointer}` }
             ],
             [
               { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
