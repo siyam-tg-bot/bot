@@ -11,32 +11,27 @@ const countFile = path.join(__dirname, "cache", "owner_media_count.json");
 
 function getNextMedia() {
   let index = 0;
-
   try {
     fs.ensureDirSync(path.join(__dirname, "cache"));
     if (fs.existsSync(countFile)) {
       const data = JSON.parse(fs.readFileSync(countFile, "utf8"));
       index = data.index || 0;
     }
-  } catch (e) {
-    console.log("Count file error:", e.message);
-  }
+  } catch (e) {}
 
   const media = mediaLinks[index];
   const nextIndex = (index + 1) % mediaLinks.length;
 
   try {
     fs.writeFileSync(countFile, JSON.stringify({ index: nextIndex }));
-  } catch (e) {
-    console.log("Write count error:", e.message);
-  }
+  } catch (e) {}
 
   return media;
 }
 
 module.exports = {
   name: "owner",
-  version: "4.5.1",
+  version: "4.5.2",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 0,
   category: "owner",
@@ -48,13 +43,14 @@ module.exports = {
     const chatId = msg.chat.id;
     const messageId = msg.message_id;
 
-    // প্রথমে লোডিং মেসেজ পাঠানো হচ্ছে যেন বট চুপ করে না থাকে
     let loadingMsg;
     try {
-      loadingMsg = await bot.sendMessage(chatId, `🔄 𝙻𝙾𝙰𝙳𝙸𝙽𝙶 𝙾𝚆𝙽𝙴𝚁 𝙸𝙽𝙵𝙾... 𝙿𝙻𝙴𝙰𝚂𝙴 𝚆𝙰𝙸𝚃.`, {
+      loadingMsg = await bot.sendMessage(chatId, `🔄 𝙻𝙾𝙰𝙳𝙸𝙽𝙶 𝙾𝚆𝙽𝙴𝚁 𝙸𝙽𝙵𝙾...`, {
         reply_to_message_id: messageId
       });
-    } catch (e) {}
+    } catch (e) {
+      return;
+    }
 
     const ownerFB1 = "https://www.facebook.com/share/14k1GZFVH2T/";
     const ownerFB2 = "https://www.facebook.com/share/14k1GZFVH2T/";
@@ -100,28 +96,28 @@ module.exports = {
       if (mediaUrl.endsWith(".mp4")) {
         await bot.sendVideo(chatId, mediaUrl, {
           caption: replyText,
-          reply_to_message_id: messageId,
           ...inlineKeyboard
         });
       } else {
         await bot.sendPhoto(chatId, mediaUrl, {
           caption: replyText,
-          reply_to_message_id: messageId,
           ...inlineKeyboard
         });
       }
-    } catch (e) {
-      await bot.sendMessage(chatId, replyText, {
-        reply_to_message_id: messageId,
-        ...inlineKeyboard
-      });
-    }
 
-    // মূল মেসেজ পাঠানোর পর লোডিং মেসেজটি ডিলিট করে দেওয়া হচ্ছে
-    if (loadingMsg && loadingMsg.message_id) {
+      if (loadingMsg && loadingMsg.message_id) {
+        await bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+      }
+    } catch (err) {
       try {
-        await bot.deleteMessage(chatId, loadingMsg.message_id);
-      } catch (e) {}
+        await bot.editMessageText(replyText, {
+          chat_id: chatId,
+          message_id: loadingMsg.message_id,
+          reply_markup: inlineKeyboard.reply_markup
+        });
+      } catch (e) {
+        await bot.sendMessage(chatId, replyText, inlineKeyboard);
+      }
     }
   }
 };
