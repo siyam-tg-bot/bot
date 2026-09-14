@@ -63,39 +63,33 @@ module.exports = {
         const caption = captions[Math.floor(Math.random() * captions.length)];
         const cachePath = path.join(__dirname, "cache", `funny_${Date.now()}.mp4`);
 
+        await fs.ensureDir(path.join(__dirname, "cache"));
+
         const response = await axios({
           url: encodeURI(link),
           method: "GET",
-          responseType: "stream"
+          responseType: "arraybuffer",
+          maxRedirects: 5
         });
 
-        await fs.ensureDir(path.join(__dirname, "cache"));
-        const writer = fs.createWriteStream(cachePath);
+        await fs.writeFile(cachePath, response.data);
 
-        response.data.pipe(writer);
-
-        writer.on("finish", async () => {
-          await bot.sendVideo(chatId, fs.createReadStream(cachePath), {
-            caption: `「 ${caption} 」`,
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "funny_next" },
-                  { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
-                ],
-                [
-                  { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
-                ]
+        await bot.sendVideo(chatId, fs.createReadStream(cachePath), {
+          caption: `「 ${caption} 」`,
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "funny_next" },
+                { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+              ],
+              [
+                { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
               ]
-            }
-          });
-          if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+            ]
+          }
         });
 
-        writer.on("error", (err) => {
-          console.error(err);
-          bot.sendMessage(chatId, "❌ ভিডিও পাঠাতে সমস্যা হয়েছে!");
-        });
+        if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
       }
     } catch (err) {
       console.error("Funny Callback Error:", err.message);
@@ -104,8 +98,9 @@ module.exports = {
 };
 
 async function sendFunnyVideo(bot, chatId, messageId) {
+  let loadingMsg;
   try {
-    const loadingMsg = await bot.sendMessage(chatId, "⏳ *ফানি ভিডিও লোড হচ্ছে, দয়া করে অপেক্ষা করুন...*", {
+    loadingMsg = await bot.sendMessage(chatId, "⏳ *ফানি ভিডিও লোড হচ্ছে, দয়া করে অপেক্ষা করুন...*", {
       parse_mode: "Markdown",
       reply_to_message_id: messageId
     });
@@ -114,50 +109,44 @@ async function sendFunnyVideo(bot, chatId, messageId) {
     const caption = captions[Math.floor(Math.random() * captions.length)];
     const cachePath = path.join(__dirname, "cache", `funny_${Date.now()}.mp4`);
 
+    await fs.ensureDir(path.join(__dirname, "cache"));
+
     const response = await axios({
       url: encodeURI(link),
       method: "GET",
-      responseType: "stream"
+      responseType: "arraybuffer",
+      maxRedirects: 5
     });
 
-    await fs.ensureDir(path.join(__dirname, "cache"));
-    const writer = fs.createWriteStream(cachePath);
+    await fs.writeFile(cachePath, response.data);
 
-    response.data.pipe(writer);
+    try {
+      await bot.deleteMessage(chatId, loadingMsg.message_id);
+    } catch (e) {}
 
-    writer.on("finish", async () => {
-      try {
-        await bot.deleteMessage(chatId, loadingMsg.message_id);
-      } catch (e) {}
-
-      await bot.sendVideo(chatId, fs.createReadStream(cachePath), {
-        caption: `「 ${caption} 」`,
-        reply_to_message_id: messageId,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "funny_next" },
-              { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
-            ],
-            [
-              { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
-            ]
+    await bot.sendVideo(chatId, fs.createReadStream(cachePath), {
+      caption: `「 ${caption} 」`,
+      reply_to_message_id: messageId,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "⏭️ 𝐍𝐄𝐗𝐓", callback_data: "funny_next" },
+            { text: "🤖 𝐀𝐃𝐃 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+          ],
+          [
+            { text: "👑 𝐎𝐖𝐍𝐄𝐑", url: "https://t.me/ri_siyam" }
           ]
-        }
-      });
-      if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+        ]
+      }
     });
 
-    writer.on("error", async (err) => {
-      console.error(err);
-      try {
-        await bot.deleteMessage(chatId, loadingMsg.message_id);
-      } catch (e) {}
-      bot.sendMessage(chatId, "❌ ভিডিও পাঠাতে সমস্যা হয়েছে!", { reply_to_message_id: messageId });
-    });
+    if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
 
   } catch (error) {
     console.error(error);
-    bot.sendMessage(chatId, "❌ কিছু একটা সমস্যা হয়েছে ভিডিও আনতে।", { reply_to_message_id: messageId });
+    if (loadingMsg) {
+      try { await bot.deleteMessage(chatId, loadingMsg.message_id); } catch (e) {}
+    }
+    bot.sendMessage(chatId, "❌ ভিডিও পাঠাতে সমস্যা হয়েছে!", { reply_to_message_id: messageId });
   }
 }
