@@ -18,13 +18,33 @@ module.exports = {
         const chatId = msg.chat.id;
         const messageId = msg.message_id;
 
-        const repliedUser = msg.reply_to_message ? msg.reply_to_message.from.id : null;
-        const mentionedUser = msg.entities && msg.entities.find(e => e.type === "text_mention") ? msg.entities.find(e => e.type === "text_mention").user.id : null;
-        
-        let targetUser = repliedUser || mentionedUser;
+        let targetUser = null;
+
+        if (msg.reply_to_message) {
+            targetUser = msg.reply_to_message.from.id;
+        } else if (msg.entities) {
+            const mentionEntity = msg.entities.find(e => e.type === "text_mention" || e.type === "mention");
+            if (mentionEntity) {
+                if (mentionEntity.type === "text_mention") {
+                    targetUser = mentionEntity.user.id;
+                } else if (mentionEntity.type === "mention") {
+                    const username = msg.text.substring(mentionEntity.offset, mentionEntity.offset + mentionEntity.length);
+                    try {
+                        const chatMember = await bot.getChatMember(chatId, username);
+                        targetUser = chatMember.user.id;
+                    } catch (e) {}
+                }
+            }
+        }
 
         if (!targetUser && args.length > 0) {
-            targetUser = args[0].replace("@", "");
+            let cleanArg = args[0].replace("@", "");
+            try {
+                const chatMember = await bot.getChatMember(chatId, cleanArg);
+                targetUser = chatMember.user.id;
+            } catch (e) {
+                targetUser = cleanArg;
+            }
         }
 
         if (!targetUser) {
@@ -44,7 +64,7 @@ module.exports = {
             try {
                 userProfilePhotos = await bot.getUserProfilePhotos(targetUser, { limit: 1 });
             } catch (e) {
-                return bot.sendMessage(chatId, `❌ 𝚄𝚂𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴 𝙿𝙷𝙾𝚃𝙾 𝙿𝙰𝚆𝙰 𝙺𝙾𝚈𝙽𝙸!`, {
+                return bot.sendMessage(chatId, `❌ 𝚄𝚂𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴 𝙿𝙷𝙾𝚃𝙾 𝙿𝙰𝚆𝙰 𝙶𝙴𝙻𝙾 𝙽𝙰!`, {
                     reply_to_message_id: messageId
                 });
             }
@@ -91,8 +111,8 @@ module.exports = {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: "👑 𝙾𝚆𝙽𝙴𝚁", url: "https://t.me/ri_siyam" },
-                            { text: "🤖 𝙰𝙳𝙳 𝙱𝙾𝚃", url: "https://t.me/SiyamTgBot?startgroup=true" }
+                            { text: "𝙾𝚆𝙽𝙴𝚁", url: "https://t.me/ri_siyam" },
+                            { text: "𝙰𝙳𝙳 𝙱𝙾𝚃", url: "https://t.me/SiyamTgBot?startgroup=true" }
                         ]
                     ]
                 }
