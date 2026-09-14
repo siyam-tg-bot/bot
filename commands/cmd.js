@@ -20,13 +20,15 @@ function isURL(str) {
   }
 }
 
+global.pendingInstalls = global.pendingInstalls || new Map();
+
 module.exports = {
   name: "cmd",
-  version: "2.1.0",
+  version: "3.0.0",
   author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
   role: 2,
   category: "admin",
-  description: "Manage and install command files dynamically",
+  description: "Advanced command manager with smart overwrite system",
 
   execute: async (bot, msg, args) => {
     const chatId = msg.chat.id;
@@ -62,7 +64,7 @@ module.exports = {
 » ⚙️ /cmd loadall
 » ⚙️ /cmd install <filename.js> <code>
 ───────────────
-» 👑 𝗢𝗪𝗡𝗘𝗥: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
+» 👑 𝗢𝐖𝐍𝗘𝗥: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍`;
 
       return bot.sendMessage(chatId, helpText, {
         reply_to_message_id: messageId,
@@ -72,7 +74,6 @@ module.exports = {
 
     const action = args[0].toLowerCase();
 
-    // LOAD
     if (action === "load" && args[1]) {
       const fileName = args[1].replace(".js", "");
       try {
@@ -83,20 +84,18 @@ module.exports = {
       }
     }
 
-    // LOAD ALL
     else if (action === "loadall" || action === "load-all") {
       const files = fs.readdirSync(COMMANDS_DIR).filter(file => file.endsWith(".js"));
       let loadedCount = 0;
-      for (const file of files) {
+      files.forEach(file => {
         try {
           global.utils.loadCommandFile(file.replace(".js", ""));
           loadedCount++;
         } catch (e) {}
-      }
+      });
       return bot.sendMessage(chatId, `✅ সফলভাবে মোট ${loadedCount} টি কমান্ড লোড হয়েছে।`, { reply_to_message_id: messageId, reply_markup: defaultButtons });
     }
 
-    // UNLOAD
     else if (action === "unload" && args[1]) {
       const fileName = args[1].replace(".js", "");
       try {
@@ -107,7 +106,6 @@ module.exports = {
       }
     }
 
-    // INSTALL
     else if (action === "install") {
       let url = args[1];
       let fileName = args[2];
@@ -123,7 +121,7 @@ module.exports = {
         url = tmp;
       }
 
-      let loadingMsg = await bot.sendMessage(chatId, "⏳ ইনস্টল করা হচ্ছে...", { reply_to_message_id: messageId }).catch(() => {});
+      let loadingMsg = await bot.sendMessage(chatId, "⏳ কোড ফেচ এবং যাচাই করা হচ্ছে...", { reply_to_message_id: messageId }).catch(() => {});
 
       try {
         if (url && isURL(url)) {
@@ -147,33 +145,50 @@ module.exports = {
 
         if (!rawCode) {
           if (loadingMsg) bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
-          return bot.sendMessage(chatId, "⚠️ কোনো কোড পাওয়া যায়নি!", { reply_to_message_id: messageId });
+          return bot.sendMessage(chatId, "⚠️ কোনো কোড বা বৈধ ইউআরএল পাওয়া যায়নি!", { reply_to_message_id: messageId });
         }
 
         const cleanFileName = fileName.replace(".js", "");
         const filePath = path.join(COMMANDS_DIR, `${cleanFileName}.js`);
+
+        if (loadingMsg) bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+
+        if (fs.existsSync(filePath)) {
+          global.pendingInstalls.set(`${chatId}_${messageId}`, { filePath, rawCode, cleanFileName, fileName });
+          
+          const confirmText = 
+`⚠️ **সতর্কবার্তা!**
+────────────────
+এই নামে (\`${fileName}\`) ইতিমধ্যে একটি কমান্ড ফাইল বিদ্যমান রয়েছে। আপনি কি পুরনো ফাইলটি মুছে নতুন ফাইলটি ইনস্টল করতে চান?`;
+
+          return bot.sendMessage(chatId, confirmText, {
+            reply_to_message_id: messageId,
+            parse_mode: "Markdown",
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: "🔄 𝗜𝗡𝗦𝗧𝗔𝗟𝗟 𝗡𝗢𝗪", callback_data: `cmd_overwrite_${chatId}_${messageId}` },
+                  { text: "❌ 𝗖𝗔𝗡𝗖𝗘𝗟", callback_data: `cmd_cancel_${chatId}_${messageId}` }
+                ]
+              ]
+            }
+          });
+        }
 
         fs.writeFileSync(filePath, rawCode, "utf8");
 
         try {
           global.utils.loadCommandFile(cleanFileName);
         } catch (loadErr) {
-          // সিনট্যাক্স বা অন্য কোনো এরর থাকলে অটো ডিলিট করে দেওয়া হবে
           if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
           throw loadErr;
         }
 
-        if (loadingMsg) bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
         return bot.sendMessage(chatId, `✅ সফলভাবে \`${fileName}\` ইনস্টল ও লোড হয়েছে!`, { reply_to_message_id: messageId, reply_markup: defaultButtons });
 
       } catch (err) {
-        let targetFile = fileName ? (fileName.endsWith(".js") ? fileName : `${fileName}.js`) : "";
-        if (targetFile) {
-          const badPath = path.join(COMMANDS_DIR, targetFile);
-          if (fs.existsSync(badPath)) fs.unlinkSync(badPath);
-        }
         if (loadingMsg) bot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
-        return bot.sendMessage(chatId, `❌ ইনস্টল ব্যর্থ ও ফাইল ডিলিট করা হয়েছে!\n\n⚠️ এরর: \`${err.message}\``, { reply_to_message_id: messageId, parse_mode: "Markdown" });
+        return bot.sendMessage(chatId, `❌ ইনস্টল ব্যর্থ!\n\n⚠️ এরর: \`${err.message}\``, { reply_to_message_id: messageId, parse_mode: "Markdown" });
       }
     }
   },
@@ -182,6 +197,55 @@ module.exports = {
     const data = query.data;
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
+
+    if (data.startsWith("cmd_overwrite_")) {
+      const key = data.replace("cmd_overwrite_", "");
+      const pendingData = global.pendingInstalls.get(key);
+
+      if (!pendingData) {
+        return bot.answerCallbackQuery(query.id, { text: "⚠️ সময়সীমা শেষ অথবা ডেটা পাওয়া যায়নি!", show_alert: true });
+      }
+
+      const { filePath, rawCode, cleanFileName, fileName } = pendingData;
+
+      try {
+        fs.writeFileSync(filePath, rawCode, "utf8");
+        global.utils.loadCommandFile(cleanFileName);
+        global.pendingInstalls.delete(key);
+
+        await bot.answerCallbackQuery(query.id, { text: "✅ Successfully Installed!" });
+        return bot.editMessageText(`✅ সফলভাবে পুরনো ফাইল ওভাররাইট করে \`${fileName}\` ইনস্টল ও লোড করা হয়েছে!`, {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🔄 Load All", callback_data: "cmd_loadall" },
+                { text: "📜 Command List", callback_data: "cmd_list" }
+              ]
+            ]
+          }
+        });
+      } catch (err) {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        return bot.editMessageText(`❌ ওভাররাইট ও ইনস্টল করতে গিয়ে এরর এসেছে:\n\`\`\`javascript\n${err.message}\n\`\`\``, {
+          chat_id: chatId,
+          message_id: messageId,
+          parse_mode: "Markdown"
+        });
+      }
+    }
+
+    if (data.startsWith("cmd_cancel_")) {
+      const key = data.replace("cmd_cancel_", "");
+      global.pendingInstalls.delete(key);
+      await bot.answerCallbackQuery(query.id, { text: "❌ Installation Cancelled." });
+      return bot.editMessageText("❌ ইনস্টলেশন বাতিল করা হয়েছে। পুরনো ফাইলটি বহাল আছে।", {
+        chat_id: chatId,
+        message_id: messageId
+      });
+    }
 
     if (data === "cmd_loadall") {
       await bot.answerCallbackQuery(query.id, { text: "⏳ Reloading..." }).catch(() => {});
