@@ -8,7 +8,7 @@ const mahmud = async () => {
 module.exports = {
     name: "meme",
     aliases: ["memes"],
-    version: "1.7",
+    version: "1.8",
     author: "𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
     role: 0,
     category: "fun",
@@ -49,10 +49,25 @@ module.exports = {
             });
 
             const imageBuffer = Buffer.from(response.data);
-            const successText = "🐸 | 𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐫𝐚𝐧𝐝𝐨𝐦 𝐦𝐞𝐦𝐞 𝐛𝐚𝐛𝐲\n👑 𝐎𝐖𝐍𝐄𝗥: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
+            const successText = "🐸 | 𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐫𝐚𝐧𝐝𝐨𝐦 𝐦𝐞𝐦𝐞 𝐛𝐚𝐛𝐲\n👑 𝐎𝐖𝗡𝗘𝐑: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
+
+            const inlineKeyboard = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: "⏭️ 𝗡𝗘𝗫𝗧 𝗠𝗘𝗠𝗘", callback_data: "meme_next" }
+                        ],
+                        [
+                            { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
+                            { text: "🤖 𝗔𝗗𝗗 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+                        ]
+                    ]
+                }
+            };
 
             await bot.sendPhoto(chatId, imageBuffer, {
                 caption: successText,
+                ...inlineKeyboard,
                 reply_to_message_id: messageId
             });
 
@@ -67,6 +82,57 @@ module.exports = {
             return bot.sendMessage(chatId, "× মিম আনতে সমস্যা হয়েছে!", {
                 reply_to_message_id: messageId
             });
+        }
+    },
+
+    onCallbackQuery: async (bot, query) => {
+        const data = query.data;
+        if (!data || data !== "meme_next") return;
+
+        const chatId = query.message.chat.id;
+
+        try {
+            await bot.answerCallbackQuery(query.id, { text: "🔄 Loading next meme..." });
+
+            const apiUrlBase = await mahmud();
+            const res = await axios.get(apiUrlBase + "/api/meme");
+            const imageUrl = res.data?.imageUrl;
+
+            if (!imageUrl) {
+                return;
+            }
+
+            const response = await axios({
+                method: "GET",
+                url: imageUrl,
+                responseType: "arraybuffer",
+                headers: { "User-Agent": "Mozilla/5.0" }
+            });
+
+            const imageBuffer = Buffer.from(response.data);
+            const successText = "🐸 | 𝐇𝐞𝐫𝐞'𝐬 𝐲𝐨𝐮𝐫 𝐦𝐞𝐦𝐞 𝐛𝐚𝐛𝐲\n👑 𝐎𝐖𝗡𝗘𝐑: 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍";
+
+            const inlineKeyboard = {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: "⏭️ 𝗡𝗘𝗫𝗧", callback_data: "meme_next" }
+                        ],
+                        [
+                            { text: "👤 𝗢𝗪𝗡𝗘𝗥", url: "https://t.me/ri_siyam" },
+                            { text: "🤖 𝗔𝗗𝗗 𝐁𝐎𝐓", url: "https://t.me/SiyamTgBot?startgroup=true" }
+                        ]
+                    ]
+                }
+            };
+
+            await bot.sendPhoto(chatId, imageBuffer, {
+                caption: successText,
+                ...inlineKeyboard
+            });
+
+        } catch (e) {
+            await bot.answerCallbackQuery(query.id, { text: "❌ Error loading meme!" });
         }
     }
 };
