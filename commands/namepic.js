@@ -1,19 +1,33 @@
 const { createCanvas, loadImage } = require('canvas');
 const axios = require('axios');
 
-module.exports = (bot) => {
-    bot.onText(/\/namepic(?:\s+(.*))?/, async (msg, match) => {
+module.exports = {
+    config: {
+        name: "namepic",
+        version: "2.0",
+        author: "𝆠፝𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍",
+        role: 0,
+        category: "utility",
+        description: "Generate an image with user name"
+    },
+
+    onStart: async function (context) {
         try {
-            const chatId = msg.chat.id;
-            const messageId = msg.message_id;
+            const bot = context.api || context.bot; 
+            const msg = context.event || context.message || context.msg;
+            const args = context.args || [];
 
-            let targetName = match[1];
+            const chatId = msg.chat.id || msg.threadID;
+            const messageId = msg.message_id || msg.messageID;
 
+            let targetName = args.join(" ");
+            
             if (!targetName && msg.reply_to_message && msg.reply_to_message.from) {
                 targetName = msg.reply_to_message.from.first_name;
             }
+            
             if (!targetName) {
-                targetName = msg.from.first_name || "User";
+                targetName = (msg.from && msg.from.first_name) ? msg.from.first_name : "User";
             }
 
             const waitingMsg = await bot.sendMessage(chatId, "⏳ ছবি তৈরি হচ্ছে, একটু অপেক্ষা করুন...", { reply_to_message_id: messageId });
@@ -46,7 +60,9 @@ module.exports = (bot) => {
 
         } catch (err) {
             console.error("Namepic Error:", err.message);
-            bot.sendMessage(msg.chat.id, "❌ সিয়াম ভাই, রেলওয়ে সার্ভারে ক্যানভাস প্যাকেজ বা কমান্ডে সমস্যা হয়েছে!", { reply_to_message_id: msg.message_id });
+            const bot = context.api || context.bot;
+            const msg = context.event || context.message || context.msg;
+            bot.sendMessage(msg.chat.id || msg.threadID, "❌ সিয়াম ভাই, ছবি তৈরি করতে সমস্যা হয়েছে!", { reply_to_message_id: msg.message_id || msg.messageID });
         }
-    });
+    }
 };
