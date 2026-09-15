@@ -20,24 +20,29 @@ module.exports = (bot) => {
 
             const boldName = userName.split("").map(c => boldMap[c] || c).join("");
 
-            const failVideos = [
-                "https://files.catbox.moe/uxku65.mp4",
-                "https://files.catbox.moe/ol92rr.mp4"
-            ];
-
-            const getRandomVideo = (arr) => arr[Math.floor(Math.random() * arr.length)];
-            const randomFailUrl = getRandomVideo(failVideos);
-
             const isKicked = msg.from && msg.from.id !== leftUser.id;
 
-            const captionText = isKicked ? 
+            if (isKicked) {
+                const kickText = 
 `» ⚠️ 𝗔𝗧𝗧𝗘𝗡𝗧𝗜𝗢𝗡 𝗣𝗟𝗘𝗔𝗦𝗘 ⚠️
 ───────────────
- ❌ এই ${boldName} 
- 🚷 তুই আবাল এই গ্রুপে থাকার যোগ্য না! 😹
- 🚫 তাই তোকে বের করে দেওয়া হয়েছে। 🥾
+» ❌ এই ${boldName} 
+» 🚷 তুই আবাল এই গ্রুপে 
+» 🥲 থাকার যোগ্য না! 😹
+» 🚫 তাই তোকে বের করে 
+» 🙂 দেওয়া হয়েছে। 🥾
 ───────────────
-» 🧚‍♀️ ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧` : 
+» 🧚‍♀️ ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
+
+                await bot.sendMessage(chatId, kickText);
+            } else {
+                const failVideos = [
+                    "https://files.catbox.moe/uxku65.mp4",
+                    "https://files.catbox.moe/ol92rr.mp4"
+                ];
+
+                const randomFailUrl = failVideos[Math.floor(Math.random() * failVideos.length)];
+                const leaveText = 
 `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
 » 😹 দুঃখিত সিয়াম ভাই...
@@ -48,7 +53,8 @@ module.exports = (bot) => {
 ───────────────
 » 🧚‍♀️ ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
 
-            await bot.sendVideo(chatId, randomFailUrl, { caption: captionText });
+                await bot.sendVideo(chatId, randomFailUrl, { caption: leaveText });
+            }
 
         } catch (err) {
             console.error("Autoinvite Event Error:", err.message);
