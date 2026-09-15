@@ -20,49 +20,24 @@ module.exports = (bot) => {
 
             const boldName = userName.split("").map(c => boldMap[c] || c).join("");
 
-            // সফলভাবে রি-ইনভাইট করার ভিডিওর লিংক (যদি কখনো টেলিগ্রাম পারমিশন দেয়)
-            const successVideos = [
-                "https://files.catbox.moe/enthzq.mp4",
-                "https://files.catbox.moe/h5c9pv.mp4"
-            ];
-
-            // ফেইল করার বা এড করতে না পারার ভিডিওর লিংক (যেহেতু টেলিগ্রাম অটো-এড করতে দেয় না, তাই সাধারণত এই অংশটিই কাজ করবে)
             const failVideos = [
                 "https://files.catbox.moe/uxku65.mp4",
                 "https://files.catbox.moe/ol92rr.mp4"
             ];
 
             const getRandomVideo = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            const randomFailUrl = getRandomVideo(failVideos);
 
-            try {
-                // টেলিগ্রাম বট এপিআই এই মেথড সরাসরি সাপোর্ট করে না, তাই এটি সরাসরি catch ব্লকে চলে যাবে
-                await bot.unbanChatMember(chatId, leftUser.id).catch(() => {});
+            const isKicked = msg.from && msg.from.id !== leftUser.id;
 
-                const randomSuccessUrl = getRandomVideo(successVideos);
-                const captionText = 
-`» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
+            const captionText = isKicked ? 
+`» ⚠️ 𝗔𝗧𝗧𝗘𝗡𝗧𝗜𝗢𝗡 𝗣𝗟𝗘𝗔𝗦𝗘 ⚠️
 ───────────────
-» 🫣 পলাইছে রে পলাইছে...!!
-» 🙆 『 ${boldName} 』
-» 🤡 এই বলদ পলাইছে.! 😹
-» 👑 আমি বস『 𝆠፝𝐒𝐈𝐘𝐀𝐌 』এর
-» 🤖 বট থাকতে.!
-» ☠️ তুই পালাতে পারবি না..😋
-» 🥋 তোকে সিয়াম বসের...
-» 🥵 খাটে কুংফু খেলার স্টাইলে
-» 🧚 ধরে নিয়ে আসলাম 😹
-» 🚫 👑𝆠፝𝐒𝐈𝐘𝐀𝐌- বসের 👈
-» 🥱 পারমিশন ছাড়া গ্রুপ থেকে 
-» 🛡️ লিভ নেওয়া যায় না.😹
+ ❌ এই ${boldName} 
+ 🚷 তুই আবাল এই গ্রুপে থাকার যোগ্য না! 😹
+ 🚫 তাই তোকে বের করে দেওয়া হয়েছে। 🥾
 ───────────────
-» 🧚‍♀️ ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
-
-                await bot.sendVideo(chatId, randomSuccessUrl, { caption: captionText });
-
-            } catch (err) {
-                // টেলিগ্রাম অটো-এড করতে না পারার কারণে এই ফানি মেসেজ ও ভিডিওটি সেন্ড হবে
-                const randomFailUrl = getRandomVideo(failVideos);
-                const failCaptionText = 
+» 🧚‍♀️ ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧` : 
 `» 👑 𝐒𝐈𝐘𝐀𝐌-𝐇𝐀𝐒𝐀𝐍 👑
 ───────────────
 » 😹 দুঃখিত সিয়াম ভাই...
@@ -73,8 +48,7 @@ module.exports = (bot) => {
 ───────────────
 » 🧚‍♀️ ‿𝗡𝗜𝗝𝗛𝗨𝗠 𝗖𝗛𝗔𝗧𝗕𝗢𝗧`;
 
-                await bot.sendVideo(chatId, randomFailUrl, { caption: failCaptionText });
-            }
+            await bot.sendVideo(chatId, randomFailUrl, { caption: captionText });
 
         } catch (err) {
             console.error("Autoinvite Event Error:", err.message);
